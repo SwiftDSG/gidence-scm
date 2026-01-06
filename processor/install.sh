@@ -1219,7 +1219,7 @@ run_post_install() {
     fi
 
     if [[ "${DRY_RUN}" == true ]]; then
-        log_dry_run "source ${venv_activate} && hailo-post-install ${post_install_args}"
+        log_dry_run "source ${venv_activate} && post-install ${post_install_args}"
         log_info "Would run as user ${ORIGINAL_USER}:"
         log_info "  • Configure environment variables (.env)"
         log_info "  • Create symlink: ${RESOURCES_SYMLINK_NAME} -> ${RESOURCES_ROOT}"
@@ -1252,7 +1252,7 @@ run_post_install() {
         export PYTHONUNBUFFERED=1 && \
         source '${venv_activate}' && \
         cd '${SCRIPT_DIR}' && \
-        stdbuf -oL -eL hailo-post-install ${post_install_args} 2>&1
+        stdbuf -oL -eL post-install ${post_install_args} 2>&1
     " | while IFS= read -r line; do
         # Log to file for debugging
         log_debug "  $line"
@@ -1276,7 +1276,7 @@ run_post_install() {
         echo ""
         log_info "You can retry post-installation manually:"
         log_info "  source ${SCRIPT_DIR}/setup_env.sh"
-        log_info "  hailo-post-install --group '${DOWNLOAD_GROUP}'"
+        log_info "  post-install --group '${DOWNLOAD_GROUP}'"
 
         record_step_result "FAILED" "Exit code: ${post_install_exit}"
         return 1
