@@ -26,7 +26,7 @@ set -uo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 readonly TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-readonly CONFIG_FILE="${SCRIPT_DIR}/hailo_apps/config/config.yaml"
+readonly CONFIG_FILE="${SCRIPT_DIR}/config.yaml"
 
 # Log file path (not readonly - may be updated if log dir not writable)
 LOG_DIR="${SCRIPT_DIR}/logs"
