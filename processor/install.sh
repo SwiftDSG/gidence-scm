@@ -597,7 +597,7 @@ ${BOLD}REQUIREMENTS:${NC}
     - Hailo PCI driver must be installed
     - HailoRT must be installed
 
-    Use 'sudo ./scripts/hailo_installer.sh' to install missing components.
+    Use 'sudo ./setup/scripts/hailo_installer.sh' to install missing components.
 
 EOF
 }
@@ -705,7 +705,7 @@ detect_user_and_group() {
 check_prerequisites() {
     log_step 2 "Prerequisites Check"
 
-    local check_script="${SCRIPT_DIR}/scripts/check_installed_packages.sh"
+    local check_script="${SCRIPT_DIR}/setup/scripts/check_installed_packages.sh"
 
     if [[ ! -f "$check_script" ]]; then
         log_error "Prerequisites check script not found: $check_script"
@@ -803,7 +803,7 @@ check_prerequisites() {
         done
         echo ""
         log_info "To install missing components, run:"
-        log_info "    sudo ./scripts/hailo_installer.sh"
+        log_info "    sudo ./setup/scripts/hailo_installer.sh"
         record_step_result "FAILED" "Missing: ${missing_components[*]}"
         return 1
     fi
@@ -1037,7 +1037,7 @@ install_python_packages() {
 
     # Install Hailo Python packages if needed
     if [[ "${INSTALL_HAILORT}" == true ]]; then
-        local install_script="${SCRIPT_DIR}/scripts/hailo_python_installation.sh"
+        local install_script="${SCRIPT_DIR}/setup/scripts/hailo_python_installation.sh"
 
         if [[ -f "$install_script" ]]; then
             log_info "Installing Hailo Python packages..."
