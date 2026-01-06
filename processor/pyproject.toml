@@ -73,11 +73,11 @@ clip = [
 ]
 
 [project.scripts]
-detect  = "inference.pipeline_apps.detection_simple.detection_simple:main"
-post-install = "installation.post_install:main"
+detect  = "inference.detection_simple:main"
+post-install = "setup.installation.post_install:main"
 
 [tool.setuptools.packages.find]
-include = ["hailo_apps*"]
+include = ["inference*", "setup*"]
 
 [tool.setuptools.package-data]
 "postprocess" = [
