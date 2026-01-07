@@ -249,11 +249,16 @@ def scm_pose_callback(element, buffer, user_data):
         caps = get_caps_from_pad(pad)
         if caps is None:
             return Gst.PadProbeReturn.OK
+        
+        format, width, height = caps['format'], caps['width'], caps['height']
+        hailo_logger.debug(f"Frame caps: format={format}, width={width}, height={height}")
             
         # Extract frame data (for debugging/visualization)
-        frame = get_numpy_from_buffer(buffer, caps)
-        if frame is not None:
-            hailo_logger.debug(f"Processing frame of shape: {frame.shape}")
+        frame = None
+        if user_data.use_frame and format and width and height:
+            frame = get_numpy_from_buffer(buffer, format, width, height)
+
+        
         
         # Extract Hailo inference metadata from buffer
         # Note: The exact method to extract pose keypoints depends on the 
