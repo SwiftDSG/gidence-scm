@@ -214,13 +214,13 @@ def scm_pose_callback(element, buffer, user_data):
         # Get tensor outputs (before post-processing)
         tensors = []
         for tensor in roi.get_tensors():
+            hailo_logger.info("Tensor:", tensor)
             tensors.append({
                 'data': tensor.data(),
                 'shape': tensor.shape(),
                 'name': tensor.name()
             })
 
-        hailo_logger.info("Number of tensors: %d", len(tensors))
 
         detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
         hailo_logger.info("Number of detections: %d", len(detections))
