@@ -5,6 +5,7 @@
 import gi
 
 gi.require_version("Gst", "1.0")
+
 # Local application-specific imports
 import hailo
 from gi.repository import Gst
