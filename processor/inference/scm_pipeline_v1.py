@@ -66,7 +66,7 @@ class SCMPoseDetectionApp(GStreamerApp):
         )
         
         # Handle --list-models flag before full initialization
-        handle_list_models_flag(parser, POSE_ESTIMATION_PIPELINE)
+        # handle_list_models_flag(parser, POSE_ESTIMATION_PIPELINE)
         
         # Initialize parent
         super().__init__(parser, user_data)
@@ -79,7 +79,7 @@ class SCMPoseDetectionApp(GStreamerApp):
         if self.batch_size == 1:
             self.batch_size = 2
         # video_width and video_height are already set from parser or defaults
-        hailo_logger.debug(
+        hailo_logger.info(
             "Video params set: %dx%d, batch_size=%d",
             self.video_width,
             self.video_height,
@@ -161,7 +161,7 @@ class SCMUserCallbackClass(app_callback_class):
     
     def __init__(self):
         super().__init__()
-        self.pose_threshold = 0.5
+        self.pose_threshold = 0.1
         
     def set_pose_threshold(self, threshold):
         """Set the confidence threshold for pose keypoints."""
@@ -175,7 +175,7 @@ def scm_pose_callback(element, buffer, user_data):
     This function will be called for each frame with pose detection results.
     It extracts keypoints and derives body part bounding boxes.
     """
-    hailo_logger.debug("Callback triggered. Current frame count=%d", user_data.get_count())
+    hailo_logger.info("Callback triggered. Current frame count=%d", user_data.get_count())
     try:
         # Get the GStreamer buffer
         if buffer is None:
@@ -266,10 +266,6 @@ def main():
     
     # Create and run the application
     app = SCMPoseDetectionApp(scm_pose_callback, user_data)
-    
-    # Set pose threshold from command line
-    if hasattr(app.options_menu, 'pose_threshold'):
-        user_data.set_pose_threshold(app.options_menu.pose_threshold)
     
     hailo_logger.info("Starting SCM Pose Detection Pipeline v1...")
     app.run()
