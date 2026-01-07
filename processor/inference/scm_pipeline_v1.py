@@ -16,16 +16,9 @@ from pathlib import Path
 from gi.repository import Gst
 
 from inference.core.common.core import (
-    get_pipeline_parser, 
-    get_resource_path
+    get_pipeline_parser,
 )
 from inference.core.common.buffer_utils import get_caps_from_pad, get_numpy_from_buffer
-from inference.core.common.defines import (
-    POSE_ESTIMATION_PIPELINE,
-    POSE_ESTIMATION_POSTPROCESS_FUNCTION,
-    POSE_ESTIMATION_POSTPROCESS_SO_FILENAME,
-    RESOURCES_SO_DIR_NAME,
-)
 
 from inference.core.common.hailo_logger import get_logger
 from inference.core.gstreamer.gstreamer_app import (
@@ -108,12 +101,17 @@ class SCMPoseDetectionApp(GStreamerApp):
             
         hailo_logger.info(f"Using local HEF model: {self.hef_path}")
         
-        # Note: Pose estimation typically doesn't need post-processing .so file
-        # as keypoints are directly available from the model output
-
+        # Use local post-processing SO from processor/inference/so/ directory
         so_dir = script_dir.parent / "inference" / "so"
         self.post_process_so = str(so_dir / "yolov8_pose.so")
         self.post_process_function = "filter_letterbox"
+
+        # Verify the so file exists
+        if not os.path.exists(self.post_process_so):
+            hailo_logger.error(f"Post-process SO file not found: {self.post_process_so}")
+            raise FileNotFoundError(f"Post-process SO file not found: {self.post_process_so}")
+
+        hailo_logger.info(f"Using local post-process SO: {self.post_process_so}")
 
         # self.post_process_so = None
         # self.post_process_function = None
@@ -121,7 +119,6 @@ class SCMPoseDetectionApp(GStreamerApp):
         #     POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
         # )
         # self.post_process_function = POSE_ESTIMATION_POSTPROCESS_FUNCTION
-        # hailo_logger.info(f"Using post-process SO: {self.post_process_so}")
         
         self.app_callback = app_callback
         
@@ -151,8 +148,8 @@ class SCMPoseDetectionApp(GStreamerApp):
             name="pose_detection",
         )
 
-        infer_pipeline_wrapper = INFERENCE_PIPELINE_WRAPPER(infer_pipeline)
-        tracker_pipeline = TRACKER_PIPELINE(class_id=0)
+        # infer_pipeline_wrapper = INFERENCE_PIPELINE_WRAPPER(infer_pipeline)
+        tracker_pipeline = TRACKER_PIPELINE(class_id = 0)
         user_callback_pipeline = USER_CALLBACK_PIPELINE()
         display_pipeline = DISPLAY_PIPELINE(
             video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps
@@ -161,13 +158,10 @@ class SCMPoseDetectionApp(GStreamerApp):
         pipeline_string = (
             f"{source_pipeline} ! "
             f"{infer_pipeline} ! "
-            # f"{infer_pipeline_wrapper} ! "
-            # f"{tracker_pipeline} ! "
+            f"{tracker_pipeline} ! "
             f"{user_callback_pipeline} ! "
             f"{display_pipeline}"
         )
-
-        hailo_logger.info(pipeline_string)
 
         return pipeline_string
 
@@ -217,47 +211,47 @@ def scm_pose_callback(element, buffer, user_data):
 
         """Extract raw outputs from Hailo"""
         roi = hailo.get_roi_from_buffer(buffer)
-        print("ROI:", roi)
-        print("OBJECTS:", roi.get_objects())
-        print("TENSORS:", roi.get_tensors())
-        print("\n\n")
+        # print("ROI:", roi)
+        # print("OBJECTS:", roi.get_objects())
+        # print("TENSORS:", roi.get_tensors())
+        # print("\n\n")
         
         # detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
         # hailo_logger.info("Number of detections: %d", len(detections))
 
         # Get outputs (before post-processing)
-        for object in roi.get_objects():
-            bbox = object.get_bbox()
-            bbox_str = f"({bbox.xmin():.2f}, {bbox.ymin():.2f}), ({bbox.xmax():.2f}, {bbox.ymax():.2f})"
+        # for object in roi.get_objects():
+        #     bbox = object.get_bbox()
+        #     bbox_str = f"({bbox.xmin():.2f}, {bbox.ymin():.2f}), ({bbox.xmax():.2f}, {bbox.ymax():.2f})"
 
-            print("Object label:", object.get_label())
-            print("Confidence:", object.get_confidence())
-            print("BBox coords:", bbox_str)
+        #     print("Object label:", object.get_label())
+        #     print("Confidence:", object.get_confidence())
+        #     print("BBox coords:", bbox_str)
 
-            print("\n\n")
+        #     print("\n\n")
 
         keypoints = get_keypoints()
-        # for detection in detections:
-        #     label = detection.get_label()
-        #     bbox = detection.get_bbox()
-        #     confidence = detection.get_confidence()
+        for detection in detections:
+            label = detection.get_label()
+            bbox = detection.get_bbox()
+            confidence = detection.get_confidence()
 
-        #     if label == "person":
-        #         track_id = 0
-        #         track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
-        #         if len(track) == 1:
-        #             track_id = track[0].get_id()
+            if label == "person":
+                track_id = 0
+                track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
+                if len(track) == 1:
+                    track_id = track[0].get_id()
 
-        #         landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
-        #         if landmarks:
-        #             points = landmarks[0].get_points()
-        #             # for eye in ["left_eye", "right_eye"]:
-        #             #     keypoint_index = keypoints[eye]
-        #             #     point = points[keypoint_index]
-        #             #     x = int((point.x() * bbox.width() + bbox.xmin()) * width)
-        #             #     y = int((point.y() * bbox.height() + bbox.ymin()) * height)
-        #             #     if user_data.use_frame:
-        #             #         cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+                landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
+                if landmarks:
+                    points = landmarks[0].get_points()
+                    for eye in ["left_eye", "right_eye"]:
+                        keypoint_index = keypoints[eye]
+                        point = points[keypoint_index]
+                        x = int((point.x() * bbox.width() + bbox.xmin()) * width)
+                        y = int((point.y() * bbox.height() + bbox.ymin()) * height)
+                        if user_data.use_frame:
+                            cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
         if user_data.use_frame:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
