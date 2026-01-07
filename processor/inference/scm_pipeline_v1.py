@@ -161,6 +161,8 @@ class SCMPoseDetectionApp(GStreamerApp):
             f"{display_pipeline}"
         )
 
+        hailo_logger.info(pipeline_string)
+
         return pipeline_string
 
 
