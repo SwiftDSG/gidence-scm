@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-detect-simple = "inference.main:main"
+optense = "inference.main:main"
 
 [tool.setuptools.packages.find]
 include = ["inference*"]
