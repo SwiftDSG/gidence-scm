@@ -29,6 +29,8 @@ from inference.core.gstreamer.gstreamer_app import (
 from inference.core.gstreamer.gstreamer_helper_pipelines import (
     DISPLAY_PIPELINE,
     INFERENCE_PIPELINE,
+    INFERENCE_PIPELINE_WRAPPER,
+    TRACKER_PIPELINE,
     SOURCE_PIPELINE,
     USER_CALLBACK_PIPELINE,
 )
@@ -40,100 +42,6 @@ hailo_logger = get_logger(__name__)
 # -----------------------------------------------------------------------------------------------
 # SCM Pose Detection Pipeline (Stage 1)
 # -----------------------------------------------------------------------------------------------
-
-# COCO keypoint indices for body part derivation
-KEYPOINT_INDICES = {
-    'nose': 0,
-    'left_eye': 1,
-    'right_eye': 2,
-    'left_ear': 3,
-    'right_ear': 4,
-    'left_shoulder': 5,
-    'right_shoulder': 6,
-    'left_elbow': 7,
-    'right_elbow': 8,
-    'left_wrist': 9,
-    'right_wrist': 10,
-    'left_hip': 11,
-    'right_hip': 12,
-    'left_knee': 13,
-    'right_knee': 14,
-    'left_ankle': 15,
-    'right_ankle': 16
-}
-
-def derive_body_parts_from_keypoints(keypoints):
-    """
-    Derive body part bounding boxes from 17 COCO keypoints.
-
-    Args:
-        keypoints: List of 17 tuples (x, y, confidence)
-
-    Returns:
-        dict: {
-            'head': (x, y, w, h),
-            'torso': (x, y, w, h),
-            'hands': (x, y, w, h),
-            'feet': (x, y, w, h)
-        }
-    """
-    body_parts = {}
-
-    # Head: from nose, eyes, ears (indices 0-4)
-    head_points = [kp for kp in keypoints[0:5] if kp[2] > 0.5]
-    if len(head_points) >= 2:
-        xs = [p[0] for p in head_points]
-        ys = [p[1] for p in head_points]
-        margin = 30  # pixels
-        body_parts['head'] = (
-            min(xs) - margin,
-            min(ys) - margin,
-            max(xs) - min(xs) + 2*margin,
-            max(ys) - min(ys) + 2*margin
-        )
-
-    # Torso: from shoulders, hips (indices 5,6,11,12)
-    torso_points = [keypoints[i] for i in [5,6,11,12] if keypoints[i][2] > 0.5]
-    if len(torso_points) >= 3:
-        xs = [p[0] for p in torso_points]
-        ys = [p[1] for p in torso_points]
-        margin = 20
-        body_parts['torso'] = (
-            min(xs) - margin,
-            min(ys) - margin,
-            max(xs) - min(xs) + 2*margin,
-            max(ys) - min(ys) + 2*margin
-        )
-
-    # Hands: from wrists (indices 9, 10)
-    hand_points = [keypoints[i] for i in [9,10] if keypoints[i][2] > 0.5]
-    if len(hand_points) >= 1:
-        xs = [p[0] for p in hand_points]
-        ys = [p[1] for p in hand_points]
-        margin = 40
-        body_parts['hands'] = (
-            min(xs) - margin,
-            min(ys) - margin,
-            max(xs) - min(xs) + 2*margin,
-            max(ys) - min(ys) + 2*margin
-        )
-
-    # Feet: from ankles (indices 15, 16)
-    feet_points = [keypoints[i] for i in [15,16] if keypoints[i][2] > 0.5]
-    if len(feet_points) >= 1:
-        xs = [p[0] for p in feet_points]
-        ys = [p[1] for p in feet_points]
-        margin_h = 40
-        margin_down = 60  # Extend down for shoes
-        body_parts['feet'] = (
-            min(xs) - margin_h,
-            min(ys) - 10,
-            max(xs) - min(xs) + 2*margin_h,
-            max(ys) - min(ys) + margin_down
-        )
-
-    return body_parts
-
 
 class SCMPoseDetectionApp(GStreamerApp):
     """
@@ -153,7 +61,7 @@ class SCMPoseDetectionApp(GStreamerApp):
         parser.add_argument(
             "--pose-threshold",
             type=float,
-            default=0.5,
+            default=0.1,
             help="Confidence threshold for pose keypoints",
         )
         
@@ -166,13 +74,24 @@ class SCMPoseDetectionApp(GStreamerApp):
         # SCM specific configuration
         self.pose_threshold = self.options_menu.pose_threshold
         hailo_logger.info(f"Using pose threshold: {self.pose_threshold}")
+
+        # Model parameters - override defaults if not set via parser
+        if self.batch_size == 1:
+            self.batch_size = 2
+        # video_width and video_height are already set from parser or defaults
+        hailo_logger.debug(
+            "Video params set: %dx%d, batch_size=%d",
+            self.video_width,
+            self.video_height,
+            self.batch_size,
+        )
         
         # Use local HEF model from processor/model/ directory
         if self.hef_path is None:
             # Get the directory where this script is located
             script_dir = Path(__file__).parent
             # Go up to processor directory and into model subdirectory
-            model_dir = script_dir.parent / "model"
+            model_dir = script_dir.parent / "inference" / "model"
             self.hef_path = str(model_dir / "yolov8m_pose.hef")
         
         # Verify the model file exists
@@ -185,7 +104,7 @@ class SCMPoseDetectionApp(GStreamerApp):
         # Note: Pose estimation typically doesn't need post-processing .so file
         # as keypoints are directly available from the model output
         self.post_process_so = None
-        self.post_function_name = None
+        self.post_process_function = None
         
         self.app_callback = app_callback
         
@@ -206,21 +125,26 @@ class SCMPoseDetectionApp(GStreamerApp):
             no_webcam_compression=True,
         )
 
-        pose_pipeline = INFERENCE_PIPELINE(
+        infer_pipeline = INFERENCE_PIPELINE(
             hef_path=self.hef_path,
             post_process_so=self.post_process_so,
+            post_function_name=self.post_process_function,
             batch_size=self.batch_size,
-            post_function_name=self.post_function_name,
             additional_params="",
             name="pose_detection",
         )
 
+        infer_pipeline_wrapper = INFERENCE_PIPELINE_WRAPPER(infer_pipeline)
+        tracker_pipeline = TRACKER_PIPELINE(class_id=0)
         user_callback_pipeline = USER_CALLBACK_PIPELINE()
-        display_pipeline = DISPLAY_PIPELINE(video_sink=self.video_sink, sync=self.sync)
+        display_pipeline = DISPLAY_PIPELINE(
+            video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps
+        )
 
         pipeline_string = (
             f"{source_pipeline} ! "
-            f"{pose_pipeline} ! "
+            f"{infer_pipeline_wrapper} ! "
+            f"{tracker_pipeline} ! "
             f"{user_callback_pipeline} ! "
             f"{display_pipeline}"
         )
