@@ -109,7 +109,7 @@ class SCMPoseDetectionApp(GStreamerApp):
         
         # Note: Pose estimation typically doesn't need post-processing .so file
         # as keypoints are directly available from the model output
-        
+
         # self.post_process_so = None
         # self.post_process_function = None
         self.post_process_so = get_resource_path(
@@ -233,7 +233,6 @@ def scm_pose_callback(element, buffer, user_data):
                         point = points[keypoint_index]
                         x = int((point.x() * bbox.width() + bbox.xmin()) * width)
                         y = int((point.y() * bbox.height() + bbox.ymin()) * height)
-                        string_to_print += f"{eye}: x: {x:.2f} y: {y:.2f}\n"
                         if user_data.use_frame:
                             cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
