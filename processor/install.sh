@@ -148,13 +148,13 @@ install_python_dependencies() {
 create_environment_script() {
     log "Creating environment activation script..."
     
-    cat > "${SCRIPT_DIR}/setup_env.sh" << 'EOF'
+    cat > "${SCRIPT_DIR}/setup.sh" << 'EOF'
 #!/usr/bin/env bash
 
 # Hailo Apps Minimal Environment Setup
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="${SCRIPT_DIR}/venv_hailo_apps_minimal"
+VENV_PATH="${SCRIPT_DIR}/optense"
 
 if [[ -f "${VENV_PATH}/bin/activate" ]]; then
     source "${VENV_PATH}/bin/activate"
@@ -167,9 +167,9 @@ else
 fi
 EOF
     
-    chmod +x "${SCRIPT_DIR}/setup_env.sh"
+    chmod +x "${SCRIPT_DIR}/setup.sh"
     
-    log_success "Environment script created: setup_env.sh"
+    log_success "Environment script created: setup.sh"
 }
 
 main() {
@@ -192,8 +192,8 @@ main() {
     log_success "Installation completed successfully!"
     echo ""
     log "To use the detection_simple application:"
-    log "  1. Activate the environment: source ./setup_env.sh"
-    log "  2. Run detection: hailo-detect-simple"
+    log "  1. Activate the environment: source ./setup.sh"
+    log "  2. Run detection: detect-simple"
     echo ""
     log_warning "Note: You'll need to install HailoRT and have proper HEF model files"
     log_warning "This minimal installation only includes the application framework"
