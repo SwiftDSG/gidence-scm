@@ -47,7 +47,7 @@ def _get_package_config_path(filename: str) -> Path | None:
     """Get config file path from package location (when installed via pip)."""
     try:
         import inference.config
-        package_dir = Path(main.config.__file__).parent
+        package_dir = Path(inference.config.__file__).parent
         config_path = package_dir / filename
         if config_path.exists():
             return config_path
