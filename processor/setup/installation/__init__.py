@@ -12,7 +12,7 @@ running in no-tappas mode.
 """
 
 # Re-export config_manager functions for convenience (no GStreamer dependency)
-from hailo_apps.config.config_manager import (
+from config.config_manager import (
     get_main_config,
     get_resources_config,
     get_available_apps,
