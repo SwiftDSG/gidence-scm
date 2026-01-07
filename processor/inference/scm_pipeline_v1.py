@@ -1,10 +1,16 @@
 # region imports
 # Standard library imports
+
+# Third-party imports
 import setproctitle
 import numpy as np
-
+import cv2
 import gi
+
 gi.require_version("Gst", "1.0")
+
+# Local application-specific imports
+import hailo
 from gi.repository import Gst
 
 from inference.core.common.core import get_pipeline_parser, handle_list_models_flag, resolve_hef_path
@@ -257,67 +263,41 @@ def scm_pose_callback(element, buffer, user_data):
         if user_data.use_frame and format and width and height:
             frame = get_numpy_from_buffer(buffer, format, width, height)
 
-        
-        
-        # Extract Hailo inference metadata from buffer
-        # Note: The exact method to extract pose keypoints depends on the 
-        # Hailo model output format. This is a placeholder implementation
-        # that will need to be updated based on the actual model output.
-        
-        # For pose detection models, results are typically stored as:
-        # - Detected person bounding boxes
-        # - 17 keypoints per person (x, y, confidence)
-        
-        # Placeholder: simulate pose detection results for testing
-        # In real implementation, this would come from buffer metadata
-        simulated_poses = [
-            {
-                'person_bbox': (100, 100, 200, 400),  # x, y, w, h
-                'keypoints': [
-                    (150, 120, 0.9),  # nose
-                    (140, 115, 0.8),  # left_eye
-                    (160, 115, 0.8),  # right_eye
-                    (135, 118, 0.7),  # left_ear
-                    (165, 118, 0.7),  # right_ear
-                    (120, 180, 0.9),  # left_shoulder
-                    (180, 180, 0.9),  # right_shoulder
-                    (110, 250, 0.8),  # left_elbow
-                    (190, 250, 0.8),  # right_elbow
-                    (100, 320, 0.7),  # left_wrist
-                    (200, 320, 0.7),  # right_wrist
-                    (130, 300, 0.9),  # left_hip
-                    (170, 300, 0.9),  # right_hip
-                    (125, 400, 0.8),  # left_knee
-                    (175, 400, 0.8),  # right_knee
-                    (120, 480, 0.7),  # left_ankle
-                    (180, 480, 0.7),  # right_ankle
-                ]
-            }
-        ]
-        
-        # Process detected poses
-        for i, pose in enumerate(simulated_poses):
-            keypoints = pose['keypoints']
-            person_bbox = pose['person_bbox']
-            
-            # Filter keypoints by confidence threshold
-            filtered_keypoints = [kp for kp in keypoints if kp[2] > user_data.pose_threshold]
-            
-            if len(filtered_keypoints) < 5:  # Need minimum keypoints for body parts
-                hailo_logger.debug(f"Person {i}: Insufficient confident keypoints ({len(filtered_keypoints)})")
-                continue
-                
-            # Derive body parts from keypoints
-            body_parts = derive_body_parts_from_keypoints(keypoints)
-            
-            # Log results for verification
-            hailo_logger.info(f"Person {i} detected:")
-            hailo_logger.info(f"  - Confident keypoints: {len(filtered_keypoints)}/17")
-            hailo_logger.info(f"  - Body parts detected: {list(body_parts.keys())}")
-            
-            for part_name, bbox in body_parts.items():
-                x, y, w, h = bbox
-                hailo_logger.info(f"  - {part_name}: bbox=({x:.0f}, {y:.0f}, {w:.0f}, {h:.0f})")
+        roi = hailo.get_roi_from_buffer(buffer)
+        detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
+
+        keypoints = get_keypoints()
+
+        for detection in detections:
+            label = detection.get_label()
+            bbox = detection.get_bbox()
+            confidence = detection.get_confidence()
+
+            if label == "person":
+                track_id = 0
+                track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
+                if len(track) == 1:
+                    track_id = track[0].get_id()
+
+                string_to_print += (
+                    f"Detection: ID: {track_id} Label: {label} Confidence: {confidence:.2f}\n"
+                )
+
+                landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
+                if landmarks:
+                    points = landmarks[0].get_points()
+                    for eye in ["left_eye", "right_eye"]:
+                        keypoint_index = keypoints[eye]
+                        point = points[keypoint_index]
+                        x = int((point.x() * bbox.width() + bbox.xmin()) * width)
+                        y = int((point.y() * bbox.height() + bbox.ymin()) * height)
+                        string_to_print += f"{eye}: x: {x:.2f} y: {y:.2f}\n"
+                        if user_data.use_frame:
+                            cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+
+        if user_data.use_frame:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            user_data.set_frame(frame)
         
         return Gst.PadProbeReturn.OK
         
@@ -325,6 +305,26 @@ def scm_pose_callback(element, buffer, user_data):
         hailo_logger.error(f"Error in pose callback: {e}")
         return Gst.PadProbeReturn.OK
 
+def get_keypoints():
+    return {
+        "nose": 0,
+        "left_eye": 1,
+        "right_eye": 2,
+        "left_ear": 3,
+        "right_ear": 4,
+        "left_shoulder": 5,
+        "right_shoulder": 6,
+        "left_elbow": 7,
+        "right_elbow": 8,
+        "left_wrist": 9,
+        "right_wrist": 10,
+        "left_hip": 11,
+        "right_hip": 12,
+        "left_knee": 13,
+        "right_knee": 14,
+        "left_ankle": 15,
+        "right_ankle": 16,
+    }
 
 def main():
     """Main function to run the SCM pose detection pipeline."""
