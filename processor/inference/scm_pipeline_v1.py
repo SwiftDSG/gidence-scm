@@ -207,11 +207,12 @@ def scm_pose_callback(element, buffer, user_data):
         if user_data.use_frame and format and width and height:
             frame = get_numpy_from_buffer(buffer, format, width, height)
 
-        """Extract raw tensor outputs from Hailo"""
+        """Extract raw outputs from Hailo"""
         roi = hailo.get_roi_from_buffer(buffer)
+        print("ROI:", roi)
         
-        detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
-        hailo_logger.info("Number of detections: %d", len(detections))
+        # detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
+        # hailo_logger.info("Number of detections: %d", len(detections))
 
         # Get outputs (before post-processing)
         for object in roi.get_objects():
