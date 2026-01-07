@@ -210,6 +210,9 @@ def scm_pose_callback(element, buffer, user_data):
         """Extract raw tensor outputs from Hailo"""
         roi = hailo.get_roi_from_buffer(buffer)
         
+        detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
+        hailo_logger.info("Number of detections: %d", len(detections))
+
         # Get outputs (before post-processing)
         for object in roi.get_objects():
             bbox = object.get_bbox()
@@ -221,11 +224,7 @@ def scm_pose_callback(element, buffer, user_data):
 
             print("\n\n")
 
-        detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
-        hailo_logger.info("Number of detections: %d", len(detections))
-
         keypoints = get_keypoints()
-
         for detection in detections:
             label = detection.get_label()
             bbox = detection.get_bbox()
@@ -240,13 +239,13 @@ def scm_pose_callback(element, buffer, user_data):
                 landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
                 if landmarks:
                     points = landmarks[0].get_points()
-                    for eye in ["left_eye", "right_eye"]:
-                        keypoint_index = keypoints[eye]
-                        point = points[keypoint_index]
-                        x = int((point.x() * bbox.width() + bbox.xmin()) * width)
-                        y = int((point.y() * bbox.height() + bbox.ymin()) * height)
-                        if user_data.use_frame:
-                            cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+                    # for eye in ["left_eye", "right_eye"]:
+                    #     keypoint_index = keypoints[eye]
+                    #     point = points[keypoint_index]
+                    #     x = int((point.x() * bbox.width() + bbox.xmin()) * width)
+                    #     y = int((point.y() * bbox.height() + bbox.ymin()) * height)
+                    #     if user_data.use_frame:
+                    #         cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
         if user_data.use_frame:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
