@@ -212,13 +212,12 @@ def scm_pose_callback(element, buffer, user_data):
         
         # Get outputs (before post-processing)
         for object in roi.get_objects():
-            print(" Object label:", object.get_label())
-            print("  BBox:", object.get_bbox())
-            print("  Confidence:", object.get_confidence())
-
             bbox = object.get_bbox()
             bbox_str = f"({bbox.xmin():.2f}, {bbox.ymin():.2f}), ({bbox.xmax():.2f}, {bbox.ymax():.2f})"
-            print("  BBox coords:", bbox_str)
+
+            print("Object label:", object.get_label())
+            print("Confidence:", object.get_confidence())
+            print("BBox coords:", bbox_str)
 
             print("\n\n")
 
