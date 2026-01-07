@@ -1,141 +1,101 @@
-"""
-Buffer utilities for GStreamer processing.
-Contains functions for extracting data from GStreamer buffers and pads.
-"""
-
-import numpy as np
+# region imports
 import gi
+
 gi.require_version("Gst", "1.0")
+import numpy as np
 from gi.repository import Gst
 
-from .defines import (
-    HAILO_NV12_VIDEO_FORMAT,
-    HAILO_RGB_VIDEO_FORMAT, 
-    HAILO_YUYV_VIDEO_FORMAT,
-)
+from .defines import HAILO_NV12_VIDEO_FORMAT, HAILO_RGB_VIDEO_FORMAT, HAILO_YUYV_VIDEO_FORMAT
 from .hailo_logger import get_logger
 
-logger = get_logger(__name__)
+hailo_logger = get_logger(__name__)
+# endregion imports
 
 
-def get_caps_from_pad(pad):
-    """
-    Get caps from a GStreamer pad.
-    
-    Args:
-        pad: GStreamer pad object
-        
-    Returns:
-        Gst.Caps: The caps from the pad
-    """
+def get_caps_from_pad(pad: Gst.Pad):
+    hailo_logger.debug("Getting caps from pad...")
     caps = pad.get_current_caps()
-    if not caps:
-        caps = pad.query_caps(None)
-    return caps
+    if caps:
+        structure = caps.get_structure(0)
+        if structure:
+            format = structure.get_value("format")
+            width = structure.get_value("width")
+            height = structure.get_value("height")
+            hailo_logger.debug(
+                f"Caps extracted - Format: {format}, Width: {width}, Height: {height}"
+            )
+            return format, width, height
+    hailo_logger.warning("No caps found on pad.")
+    return None, None, None
 
 
-def get_numpy_from_buffer(buffer, caps):
-    """
-    Extract numpy array from GStreamer buffer.
-    
-    Args:
-        buffer: GStreamer buffer object
-        caps: GStreamer caps object
-        
-    Returns:
-        numpy.ndarray: The extracted numpy array
-    """
-    # Extract buffer info
-    success, buffer_map = buffer.map(Gst.MapFlags.READ)
+def handle_rgb(map_info, width, height):
+    hailo_logger.debug(f"Handling RGB frame - Width: {width}, Height: {height}")
+    return np.ndarray(shape=(height, width, 3), dtype=np.uint8, buffer=map_info.data).copy()
+
+
+def handle_nv12(map_info, width, height):
+    hailo_logger.debug(f"Handling NV12 frame - Width: {width}, Height: {height}")
+    y_plane_size = width * height
+    y_plane = np.ndarray(
+        shape=(height, width), dtype=np.uint8, buffer=map_info.data[:y_plane_size]
+    ).copy()
+    uv_plane = np.ndarray(
+        shape=(height // 2, width // 2, 2), dtype=np.uint8, buffer=map_info.data[y_plane_size:]
+    ).copy()
+    return y_plane, uv_plane
+
+
+def handle_yuyv(map_info, width, height):
+    hailo_logger.debug(f"Handling YUYV frame - Width: {width}, Height: {height}")
+    return np.ndarray(shape=(height, width, 2), dtype=np.uint8, buffer=map_info.data).copy()
+
+
+FORMAT_HANDLERS = {
+    HAILO_RGB_VIDEO_FORMAT: handle_rgb,
+    HAILO_NV12_VIDEO_FORMAT: handle_nv12,
+    HAILO_YUYV_VIDEO_FORMAT: handle_yuyv,
+}
+
+
+def get_numpy_from_buffer(buffer, format, width, height):
+    hailo_logger.debug(
+        f"Converting GstBuffer to numpy - Format: {format}, Width: {width}, Height: {height}"
+    )
+    success, map_info = buffer.map(Gst.MapFlags.READ)
     if not success:
-        logger.error("Failed to map buffer")
-        return None
-        
+        hailo_logger.error("Buffer mapping failed")
+        raise ValueError("Buffer mapping failed")
+
     try:
-        # Get video info from caps
-        video_info = get_video_info_from_caps(caps)
-        if not video_info:
-            logger.error("Failed to get video info from caps")
-            return None
-            
-        # Extract numpy array based on format
-        numpy_array = extract_numpy_array(buffer_map, video_info)
-        return numpy_array
-        
+        handler = FORMAT_HANDLERS.get(format)
+        if handler is None:
+            hailo_logger.error(f"Unsupported format: {format}")
+            raise ValueError(f"Unsupported format: {format}")
+        hailo_logger.debug(f"Using handler: {handler.__name__}")
+        return handler(map_info, width, height)
     finally:
-        buffer.unmap(buffer_map)
+        buffer.unmap(map_info)
+        hailo_logger.debug("Buffer unmapped successfully")
 
 
-def get_video_info_from_caps(caps):
-    """
-    Extract video info from GStreamer caps.
-    
-    Args:
-        caps: GStreamer caps object
-        
-    Returns:
-        dict: Video information (width, height, format)
-    """
-    if not caps or caps.get_size() == 0:
-        return None
-        
-    structure = caps.get_structure(0)
-    if not structure:
-        return None
-        
-    width = structure.get_int("width")[1] if structure.get_int("width")[0] else None
-    height = structure.get_int("height")[1] if structure.get_int("height")[0] else None
-    format_str = structure.get_string("format")
-    
-    if not all([width, height, format_str]):
-        return None
-        
-    return {
-        "width": width,
-        "height": height, 
-        "format": format_str
-    }
+def get_numpy_from_buffer_efficient(buffer, format, width, height):
+    hailo_logger.debug(
+        f"Efficient conversion GstBuffer to numpy - Format: {format}, Width: {width}, Height: {height}"
+    )
+    handler = FORMAT_HANDLERS.get(format)
+    if handler is None:
+        hailo_logger.error(f"Unsupported format: {format}")
+        raise ValueError(f"Unsupported format: {format}")
 
+    success, map_info = buffer.map(Gst.MapFlags.READ)
+    if not success:
+        hailo_logger.error("Buffer mapping failed")
+        raise ValueError("Buffer mapping failed")
 
-def extract_numpy_array(buffer_map, video_info):
-    """
-    Extract numpy array from mapped buffer data.
-    
-    Args:
-        buffer_map: Mapped GStreamer buffer
-        video_info: Video information dict
-        
-    Returns:
-        numpy.ndarray: The extracted array
-    """
-    width = video_info["width"]
-    height = video_info["height"]
-    format_str = video_info["format"]
-    
-    # Get raw buffer data
-    buffer_data = buffer_map.data
-    
-    if format_str in [HAILO_RGB_VIDEO_FORMAT]:
-        # RGB format
-        array = np.frombuffer(buffer_data, dtype=np.uint8)
-        array = array.reshape((height, width, 3))
-        
-    elif format_str in [HAILO_NV12_VIDEO_FORMAT]:
-        # NV12 format (Y plane + interleaved UV)
-        array = np.frombuffer(buffer_data, dtype=np.uint8)
-        # For NV12, we typically just return the Y plane
-        y_plane_size = width * height
-        array = array[:y_plane_size].reshape((height, width))
-        
-    elif format_str in [HAILO_YUYV_VIDEO_FORMAT]:
-        # YUYV format
-        array = np.frombuffer(buffer_data, dtype=np.uint8)
-        # YUYV has 2 bytes per pixel
-        array = array.reshape((height, width, 2))
-        
-    else:
-        logger.warning(f"Unsupported video format: {format_str}")
-        # Fallback: return raw buffer as 1D array
-        array = np.frombuffer(buffer_data, dtype=np.uint8)
-        
-    return array
+    try:
+        hailo_logger.debug(f"Using handler: {handler.__name__}")
+        return handler(map_info, width, height)
+    finally:
+        buffer.unmap(map_info)
+        hailo_logger.debug("Buffer unmapped successfully")
