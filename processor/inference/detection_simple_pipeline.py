@@ -2,8 +2,8 @@
 # Standard library imports
 import setproctitle
 
-from hailo_apps.python.core.common.core import get_pipeline_parser, get_resource_path, handle_list_models_flag, resolve_hef_path
-from hailo_apps.python.core.common.defines import (
+from inference.core.common.core import get_pipeline_parser, get_resource_path, handle_list_models_flag, resolve_hef_path
+from inference.core.common.defines import (
     RESOURCES_SO_DIR_NAME,
     RESOURCES_VIDEOS_DIR_NAME,
     SIMPLE_DETECTION_APP_TITLE,
@@ -13,13 +13,13 @@ from hailo_apps.python.core.common.defines import (
     SIMPLE_DETECTION_VIDEO_NAME,
 )
 
-from hailo_apps.python.core.common.hailo_logger import get_logger
-from hailo_apps.python.core.gstreamer.gstreamer_app import (
+from inference.core.common.hailo_logger import get_logger
+from inference.core.gstreamer.gstreamer_app import (
     GStreamerApp,
     app_callback_class,
     dummy_callback,
 )
-from hailo_apps.python.core.gstreamer.gstreamer_helper_pipelines import (
+from inference.core.gstreamer.gstreamer_helper_pipelines import (
     DISPLAY_PIPELINE,
     INFERENCE_PIPELINE,
     SOURCE_PIPELINE,

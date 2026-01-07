@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hailo-apps-minimal"
+name = "gidence-scm-processor"
 version = "1.0.0"
-description = "Minimal Hailo AI detection_simple application"
+description = "Hailo AI detection_simple application"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
@@ -34,12 +34,12 @@ dev = [
 ]
 
 [project.scripts]
-hailo-detect-simple = "hailo_apps.python.pipeline_apps.detection_simple.detection_simple:main"
+detect-simple = "inference.detection_simple:main"
 
 [tool.setuptools.packages.find]
-include = ["hailo_apps*"]
+include = ["inference*"]
 
 [tool.setuptools.package-data]
-"hailo_apps.config" = [
+"inference.config" = [
     "*.yaml",
 ]

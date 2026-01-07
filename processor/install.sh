@@ -17,7 +17,7 @@
 set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly VENV_NAME="venv_hailo_apps_minimal"
+readonly VENV_NAME="optense"
 readonly VENV_PATH="${SCRIPT_DIR}/${VENV_NAME}"
 
 # Terminal colors

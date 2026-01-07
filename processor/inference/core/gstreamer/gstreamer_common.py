@@ -5,7 +5,7 @@ import sys
 import cv2
 import gi
 from gi.repository import GLib, GObject, Gst
-from hailo_apps.python.core.common.hailo_logger import get_logger
+from inference.core.common.hailo_logger import get_logger
 
 hailo_logger = get_logger(__name__)
 

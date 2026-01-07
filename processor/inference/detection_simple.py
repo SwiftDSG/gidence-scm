@@ -9,12 +9,12 @@ gi.require_version("Gst", "1.0")
 import hailo
 from gi.repository import Gst
 
-from hailo_apps.python.pipeline_apps.detection_simple.detection_simple_pipeline import (
+from inference.detection_simple_pipeline import (
     GStreamerDetectionSimpleApp,
 )
 
-from hailo_apps.python.core.common.hailo_logger import get_logger
-from hailo_apps.python.core.gstreamer.gstreamer_app import app_callback_class
+from inference.core.common.hailo_logger import get_logger
+from inference.core.gstreamer.gstreamer_app import app_callback_class
 
 hailo_logger = get_logger(__name__)
 

@@ -1,12 +1,11 @@
 import os
 
-from hailo_apps.python.core.common.defines import (
+from inference.core.common.defines import (
     GST_VIDEO_SINK,
     TAPPAS_POSTPROC_PATH_DEFAULT,
     TAPPAS_POSTPROC_PATH_KEY,
     SHARED_VDEVICE_GROUP_ID
 )
-
 
 def get_source_type(input_source):
     # This function will return the source type based on the input source

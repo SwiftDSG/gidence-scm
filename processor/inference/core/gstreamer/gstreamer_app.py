@@ -30,20 +30,20 @@ gi.require_version('Gtk', '3.0')
 gi.require_version("Gst", "1.0")
 from gi.repository import GLib, Gst
 
-from hailo_apps.python.core.common.buffer_utils import (
+from inference.core.common.buffer_utils import (
     get_caps_from_pad,
     get_numpy_from_buffer,
 )
-from hailo_apps.python.core.common.camera_utils import (
+from inference.core.common.camera_utils import (
     get_usb_video_devices,
 )
-from hailo_apps.python.core.common.core import (
+from inference.core.common.core import (
     load_environment,
 )
-from hailo_apps.python.core.common.installation_utils import detect_hailo_arch
+from inference.core.common.installation_utils import detect_hailo_arch
 
 # Absolute imports for your common utilities
-from hailo_apps.python.core.common.defines import (
+from inference.core.common.defines import (
     BASIC_PIPELINES_VIDEO_EXAMPLE_NAME,
     GST_VIDEO_SINK,
     HAILO_ARCH_KEY,
@@ -54,14 +54,14 @@ from hailo_apps.python.core.common.defines import (
     TAPPAS_POSTPROC_PATH_KEY,
     USB_CAMERA,
 )
-from hailo_apps.python.core.common.hailo_logger import get_logger, init_logging, level_from_args
+from inference.core.common.hailo_logger import get_logger, init_logging, level_from_args
 
 # python/core/gstreamer/gstreamer_app.py
 # Absolute import for your local helper
-from hailo_apps.python.core.gstreamer.gstreamer_helper_pipelines import (
+from inference.core.gstreamer.gstreamer_helper_pipelines import (
     get_source_type,
 )
-from hailo_apps.python.core.gstreamer.gstreamer_common import (
+from inference.core.gstreamer.gstreamer_common import (
     gstreamer_log_filter,
     disable_qos,
     display_user_data_frame,
