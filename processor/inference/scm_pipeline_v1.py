@@ -210,6 +210,9 @@ def scm_pose_callback(element, buffer, user_data):
         """Extract raw outputs from Hailo"""
         roi = hailo.get_roi_from_buffer(buffer)
         print("ROI:", roi)
+        print("OBJECTS:", roi.get_objects())
+        print("TENSORS:", roi.get_tensors())
+        print("\n\n")
         
         # detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
         # hailo_logger.info("Number of detections: %d", len(detections))
