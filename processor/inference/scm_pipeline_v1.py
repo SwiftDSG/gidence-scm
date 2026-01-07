@@ -110,13 +110,13 @@ class SCMPoseDetectionApp(GStreamerApp):
         # Note: Pose estimation typically doesn't need post-processing .so file
         # as keypoints are directly available from the model output
 
-        # self.post_process_so = None
-        # self.post_process_function = None
-        self.post_process_so = get_resource_path(
-            POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
-        )
-        hailo_logger.info(f"Using post-process SO: {self.post_process_so}")
-        self.post_process_function = POSE_ESTIMATION_POSTPROCESS_FUNCTION
+        self.post_process_so = None
+        self.post_process_function = None
+        # self.post_process_so = get_resource_path(
+        #     POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
+        # )
+        # self.post_process_function = POSE_ESTIMATION_POSTPROCESS_FUNCTION
+        # hailo_logger.info(f"Using post-process SO: {self.post_process_so}")
         
         self.app_callback = app_callback
         
