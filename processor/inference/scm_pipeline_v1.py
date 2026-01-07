@@ -246,11 +246,10 @@ def scm_pose_callback(element, buffer, user_data):
             
         # Get frame information
         pad = element.get_static_pad("src")
-        caps = get_caps_from_pad(pad)
-        if caps is None:
+        format, width, height = get_caps_from_pad(pad)
+        if format is None or width is None or height is None:
             return Gst.PadProbeReturn.OK
         
-        format, width, height = caps['format'], caps['width'], caps['height']
         hailo_logger.debug(f"Frame caps: format={format}, width={width}, height={height}")
             
         # Extract frame data (for debugging/visualization)
