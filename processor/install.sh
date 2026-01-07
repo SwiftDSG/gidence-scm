@@ -17,7 +17,7 @@
 set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly VENV_NAME="optense"
+readonly VENV_NAME="scm"
 readonly VENV_PATH="${SCRIPT_DIR}/${VENV_NAME}"
 
 # Terminal colors
@@ -139,7 +139,6 @@ create_virtual_environment() {
 install_python_dependencies() {
     log "Installing Python dependencies..."
     
-    # Install the minimal hailo-apps package
     pip install -e .
     
     log_success "Python dependencies installed"
@@ -154,12 +153,12 @@ create_environment_script() {
 # Hailo Apps Minimal Environment Setup
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="${SCRIPT_DIR}/optense"
+VENV_PATH="${SCRIPT_DIR}/scm"
 
 if [[ -f "${VENV_PATH}/bin/activate" ]]; then
     source "${VENV_PATH}/bin/activate"
-    echo "Hailo Apps Minimal environment activated"
-    echo "Available command: detect-simple"
+    echo "Optense — SCM environment activated"
+    echo "Available command: run"
 else
     echo "Error: Virtual environment not found at ${VENV_PATH}"
     echo "Please run ./install.sh first"
@@ -175,7 +174,7 @@ EOF
 main() {
     local arch
     
-    log "Starting Hailo Apps Minimal Installation..."
+    log "Starting Optense — SCM Installation..."
     log "Script directory: ${SCRIPT_DIR}"
     
     # Pre-flight checks
@@ -191,9 +190,9 @@ main() {
     
     log_success "Installation completed successfully!"
     echo ""
-    log "To use the detection_simple application:"
+    log "To use Optense — SCM:"
     log "  1. Activate the environment: source ./setup.sh"
-    log "  2. Run detection: detect-simple"
+    log "  2. Run detection: run"
     echo ""
     log_warning "Note: You'll need to install HailoRT and have proper HEF model files"
     log_warning "This minimal installation only includes the application framework"

@@ -5,18 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gidence-scm-processor"
 version = "1.0.0"
-description = "Hailo AI detection_simple application"
+description = "Optense — Safety Compliance Monitoring"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
-    {name = "Hailo Minimal"},
+    {name = "Optense"},
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    # Core dependencies for detection_simple
     "numpy",
     "setproctitle",
     "opencv-python",
@@ -34,7 +33,7 @@ dev = [
 ]
 
 [project.scripts]
-optense = "inference.main:main"
+run = "inference.main:main"
 
 [tool.setuptools.packages.find]
 include = ["inference*"]
