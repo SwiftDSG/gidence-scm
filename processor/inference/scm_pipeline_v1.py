@@ -230,13 +230,14 @@ class SCMUserCallbackClass(app_callback_class):
         self.pose_threshold = threshold
 
 
-def scm_pose_callback(pad, buffer, user_data):
+def scm_pose_callback(element, buffer, user_data):
     """
     Callback function for processing pose detection results.
     
     This function will be called for each frame with pose detection results.
     It extracts keypoints and derives body part bounding boxes.
     """
+    hailo_logger.debug("Callback triggered. Current frame count=%d", user_data.get_count())
     try:
         # Get the GStreamer buffer
         if buffer is None:
@@ -244,6 +245,7 @@ def scm_pose_callback(pad, buffer, user_data):
             return
             
         # Get frame information
+        pad = element.get_static_pad("src")
         caps = get_caps_from_pad(pad)
         if caps is None:
             return Gst.PadProbeReturn.OK
