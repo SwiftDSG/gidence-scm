@@ -155,7 +155,8 @@ class SCMPoseDetectionApp(GStreamerApp):
 
         pipeline_string = (
             f"{source_pipeline} ! "
-            f"{infer_pipeline_wrapper} ! "
+            f"{infer_pipeline} ! "
+            # f"{infer_pipeline_wrapper} ! "
             # f"{tracker_pipeline} ! "
             f"{user_callback_pipeline} ! "
             f"{display_pipeline}"
