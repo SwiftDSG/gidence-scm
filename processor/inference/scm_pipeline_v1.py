@@ -92,10 +92,11 @@ class SCMPoseDetectionApp(GStreamerApp):
             self.batch_size,
         )
         
+        script_dir = Path(__file__).parent
+
         # Use local HEF model from processor/model/ directory
         if self.hef_path is None:
             # Get the directory where this script is located
-            script_dir = Path(__file__).parent
             # Go up to processor directory and into model subdirectory
             model_dir = script_dir.parent / "inference" / "model"
             self.hef_path = str(model_dir / "yolov8s_pose.hef")
@@ -110,8 +111,12 @@ class SCMPoseDetectionApp(GStreamerApp):
         # Note: Pose estimation typically doesn't need post-processing .so file
         # as keypoints are directly available from the model output
 
-        self.post_process_so = None
-        self.post_process_function = None
+        so_dir = script_dir.parent / "inference" / "so"
+        self.post_process_so = str(so_dir / "yolov8_pose.so")
+        self.post_process_function = "filter_letterbox"
+
+        # self.post_process_so = None
+        # self.post_process_function = None
         # self.post_process_so = get_resource_path(
         #     POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
         # )
