@@ -208,9 +208,8 @@ def scm_pose_callback(element, buffer, user_data):
             frame = get_numpy_from_buffer(buffer, format, width, height)
 
         """Extract raw tensor outputs from Hailo"""
-        # This is model-specific, example for YOLOv8:
         roi = hailo.get_roi_from_buffer(buffer)
-        hailo_logger.info("ROI:", roi)
+        print("ROI:", roi)
         
         # Get tensor outputs (before post-processing)
         tensors = []
