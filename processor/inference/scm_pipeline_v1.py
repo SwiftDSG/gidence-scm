@@ -188,7 +188,7 @@ def scm_pose_callback(element, buffer, user_data):
         if format is None or width is None or height is None:
             return Gst.PadProbeReturn.OK
         
-        hailo_logger.debug(f"Frame caps: format={format}, width={width}, height={height}")
+        hailo_logger.info(f"Frame caps: format={format}, width={width}, height={height}")
             
         # Extract frame data (for debugging/visualization)
         frame = None
