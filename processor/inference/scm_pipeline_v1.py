@@ -187,8 +187,6 @@ def scm_pose_callback(element, buffer, user_data):
         format, width, height = get_caps_from_pad(pad)
         if format is None or width is None or height is None:
             return Gst.PadProbeReturn.OK
-        
-        hailo_logger.info(f"Frame caps: format={format}, width={width}, height={height}")
             
         # Extract frame data (for debugging/visualization)
         frame = None
@@ -197,6 +195,8 @@ def scm_pose_callback(element, buffer, user_data):
 
         roi = hailo.get_roi_from_buffer(buffer)
         detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
+
+        hailo_logger.info("Number of detections: %d", len(detections))
 
         keypoints = get_keypoints()
 
