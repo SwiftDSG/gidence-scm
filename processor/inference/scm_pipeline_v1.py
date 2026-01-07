@@ -115,6 +115,7 @@ class SCMPoseDetectionApp(GStreamerApp):
         self.post_process_so = get_resource_path(
             POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
         )
+        hailo_logger.info(f"Using post-process SO: {self.post_process_so}")
         self.post_process_function = POSE_ESTIMATION_POSTPROCESS_FUNCTION
         
         self.app_callback = app_callback
