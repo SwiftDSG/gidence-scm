@@ -213,6 +213,17 @@ def scm_pose_callback(element, buffer, user_data):
         # Get outputs (before post-processing)
         print("Tensors:", roi.get_tensors())
         print("Objects:", roi.get_objects())
+        for object in roi.get_objects():
+            print(" Object label:", object.get_label())
+            print("  BBox:", object.get_bbox())
+            print("  Confidence:", object.get_confidence())
+            for sub_object in object.get_all_sub_objects():
+                print("   Sub-object label:", sub_object.get_label())
+                if sub_object.get_label() == hailo.HAILO_LANDMARKS:
+                    points = sub_object.get_points()
+                    print("    Landmarks points:")
+                    for idx, point in enumerate(points):
+                        print(f"     Point {idx}: (x={point.x()}, y={point.y()})")
 
 
         detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
