@@ -10,15 +10,21 @@ import gi
 gi.require_version("Gst", "1.0")
 
 # Local application-specific imports
+import os
 import hailo
+from pathlib import Path
 from gi.repository import Gst
 
-from inference.core.common.core import get_pipeline_parser, handle_list_models_flag
-import os
-from pathlib import Path
+from inference.core.common.core import (
+    get_pipeline_parser, 
+    get_resource_path
+)
 from inference.core.common.buffer_utils import get_caps_from_pad, get_numpy_from_buffer
 from inference.core.common.defines import (
     POSE_ESTIMATION_PIPELINE,
+    POSE_ESTIMATION_POSTPROCESS_FUNCTION,
+    POSE_ESTIMATION_POSTPROCESS_SO_FILENAME,
+    RESOURCES_SO_DIR_NAME,
 )
 
 from inference.core.common.hailo_logger import get_logger
@@ -33,6 +39,7 @@ from inference.core.gstreamer.gstreamer_helper_pipelines import (
     TRACKER_PIPELINE,
     SOURCE_PIPELINE,
     USER_CALLBACK_PIPELINE,
+    
 )
 
 hailo_logger = get_logger(__name__)
@@ -42,7 +49,6 @@ hailo_logger = get_logger(__name__)
 # -----------------------------------------------------------------------------------------------
 # SCM Pose Detection Pipeline (Stage 1)
 # -----------------------------------------------------------------------------------------------
-
 class SCMPoseDetectionApp(GStreamerApp):
     """
     SCM Pipeline v1: Pose Detection Only
@@ -103,8 +109,13 @@ class SCMPoseDetectionApp(GStreamerApp):
         
         # Note: Pose estimation typically doesn't need post-processing .so file
         # as keypoints are directly available from the model output
-        self.post_process_so = None
-        self.post_process_function = None
+        
+        # self.post_process_so = None
+        # self.post_process_function = None
+        self.post_process_so = get_resource_path(
+            POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
+        )
+        self.post_process_function = POSE_ESTIMATION_POSTPROCESS_FUNCTION
         
         self.app_callback = app_callback
         
@@ -155,7 +166,6 @@ class SCMPoseDetectionApp(GStreamerApp):
 # -----------------------------------------------------------------------------------------------
 # Main execution and callback class
 # -----------------------------------------------------------------------------------------------
-
 class SCMUserCallbackClass(app_callback_class):
     """User callback class for SCM pose detection pipeline."""
     
@@ -168,6 +178,9 @@ class SCMUserCallbackClass(app_callback_class):
         self.pose_threshold = threshold
 
 
+# -----------------------------------------------------------------------------------------------
+# User-defined callback function
+# -----------------------------------------------------------------------------------------------
 def scm_pose_callback(element, buffer, user_data):
     """
     Callback function for processing pose detection results.
@@ -211,10 +224,6 @@ def scm_pose_callback(element, buffer, user_data):
                 track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
                 if len(track) == 1:
                     track_id = track[0].get_id()
-
-                string_to_print += (
-                    f"Detection: ID: {track_id} Label: {label} Confidence: {confidence:.2f}\n"
-                )
 
                 landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
                 if landmarks:
