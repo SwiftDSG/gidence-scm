@@ -29,14 +29,14 @@ from typing import Optional
 
 import yaml
 
-from hailo_apps.python.core.common.hailo_logger import get_logger
+from inference.core.common.hailo_logger import get_logger
 
 hailo_logger = get_logger(__name__)
 
-from hailo_apps.config.config_manager import get_resources_config, _load_yaml as load_config
+from config.config_manager import get_resources_config, _load_yaml as load_config
 
-from hailo_apps.python.core.common.core import load_environment
-from hailo_apps.python.core.common.defines import (
+from inference.core.common.core import load_environment
+from inference.core.common.defines import (
     DEFAULT_RESOURCES_CONFIG_PATH,
     HAILO8_ARCH,
     HAILO8L_ARCH,
@@ -54,7 +54,7 @@ from hailo_apps.python.core.common.defines import (
     VALID_H8_MODEL_ZOO_VERSION,
     VALID_H10_MODEL_ZOO_VERSION,
 )
-from hailo_apps.python.core.common.installation_utils import detect_hailo_arch
+from inference.core.common.installation_utils import detect_hailo_arch
 
 
 # =============================================================================

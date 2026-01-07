@@ -25,7 +25,7 @@ from typing import Dict, Optional
 
 # Try to import logger from hailo_apps, fallback to simple logger
 try:
-    from hailo_apps.python.core.common.hailo_logger import get_logger
+    from inference.core.common.hailo_logger import get_logger
 except ImportError:
     import logging
 
@@ -39,11 +39,11 @@ except ImportError:
             logger.setLevel(logging.INFO)
         return logger
 
-from hailo_apps.config.config_manager import get_main_config
+from config.config_manager import get_main_config
 
 # Try to import defines and installation utils from hailo_apps
 try:
-    from hailo_apps.python.core.common.defines import (
+    from inference.core.common.defines import (
         DEFAULT_DOTENV_PATH,
         DEFAULT_RESOURCES_SYMLINK_PATH,
         HAILO10H_ARCH,
@@ -64,7 +64,7 @@ try:
         VIRTUAL_ENV_NAME_DEFAULT,
         VIRTUAL_ENV_NAME_KEY,
     )
-    from hailo_apps.python.core.common.installation_utils import (
+    from inference.core.common.installation_utils import (
         auto_detect_tappas_postproc_dir,
         auto_detect_tappas_version,
         detect_hailo_arch,
