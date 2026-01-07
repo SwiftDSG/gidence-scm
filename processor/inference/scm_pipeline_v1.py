@@ -92,7 +92,7 @@ class SCMPoseDetectionApp(GStreamerApp):
             script_dir = Path(__file__).parent
             # Go up to processor directory and into model subdirectory
             model_dir = script_dir.parent / "inference" / "model"
-            self.hef_path = str(model_dir / "yolov8m_pose.hef")
+            self.hef_path = str(model_dir / "yolov8s_pose.hef")
         
         # Verify the model file exists
         if not os.path.exists(self.hef_path):
