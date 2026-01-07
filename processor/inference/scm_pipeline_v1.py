@@ -92,7 +92,8 @@ class SCMPoseDetectionApp(GStreamerApp):
             # Get the directory where this script is located
             # Go up to processor directory and into model subdirectory
             model_dir = script_dir.parent / "inference" / "model"
-            self.hef_path = str(model_dir / "yolov8m_pose.hef")
+            self.hef_path = str(model_dir / "person_attr_resnet.hef")
+            # self.hef_path = str(model_dir / "yolov8m_pose.hef")
             # self.hef_path = str(model_dir / "yolov8s_pose.hef")
         
         # Verify the model file exists
@@ -103,19 +104,20 @@ class SCMPoseDetectionApp(GStreamerApp):
         hailo_logger.info(f"Using local HEF model: {self.hef_path}")
         
         # Use local post-processing SO from processor/inference/so/ directory
-        so_dir = script_dir.parent / "inference" / "so"
-        self.post_process_so = str(so_dir / "yolov8_pose.so")
-        self.post_process_function = "filter_letterbox"
+        # so_dir = script_dir.parent / "inference" / "so"
+        # self.post_process_so = str(so_dir / "yolov8_pose.so")
+        # self.post_process_function = "filter_letterbox"
 
-        # Verify the so file exists
-        if not os.path.exists(self.post_process_so):
-            hailo_logger.error(f"Post-process SO file not found: {self.post_process_so}")
-            raise FileNotFoundError(f"Post-process SO file not found: {self.post_process_so}")
+        # # Verify the so file exists
+        # if not os.path.exists(self.post_process_so):
+        #     hailo_logger.error(f"Post-process SO file not found: {self.post_process_so}")
+        #     raise FileNotFoundError(f"Post-process SO file not found: {self.post_process_so}")
 
-        hailo_logger.info(f"Using local post-process SO: {self.post_process_so}")
+        # hailo_logger.info(f"Using local post-process SO: {self.post_process_so}")
 
-        # self.post_process_so = None
-        # self.post_process_function = None
+        self.post_process_so = None
+        self.post_process_function = None
+
         # self.post_process_so = get_resource_path(
         #     POSE_ESTIMATION_PIPELINE, RESOURCES_SO_DIR_NAME, self.arch, POSE_ESTIMATION_POSTPROCESS_SO_FILENAME
         # )
