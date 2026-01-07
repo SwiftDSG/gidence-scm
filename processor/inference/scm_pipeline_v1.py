@@ -209,7 +209,6 @@ def scm_pose_callback(element, buffer, user_data):
 
         """Extract raw tensor outputs from Hailo"""
         roi = hailo.get_roi_from_buffer(buffer)
-        print("ROI:", roi)
         
         # Get outputs (before post-processing)
         hailo_logger.info("Tensors:", roi.get_tensors())
