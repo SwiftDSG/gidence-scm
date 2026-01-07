@@ -159,7 +159,7 @@ VENV_PATH="${SCRIPT_DIR}/optense"
 if [[ -f "${VENV_PATH}/bin/activate" ]]; then
     source "${VENV_PATH}/bin/activate"
     echo "Hailo Apps Minimal environment activated"
-    echo "Available command: hailo-detect-simple"
+    echo "Available command: detect-simple"
 else
     echo "Error: Virtual environment not found at ${VENV_PATH}"
     echo "Please run ./install.sh first"

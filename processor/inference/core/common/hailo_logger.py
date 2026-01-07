@@ -117,8 +117,8 @@ def init_logging(
     # However, if user explicitly sets DEBUG via environment variable, respect their choice
     # and don't suppress (they want to see everything)
     noisy_loggers = [
-        "hailo_apps.installation.config_utils",  # Config loading is verbose
-        "hailo_apps.installation",  # Suppress entire installation module
+        "inference.installation.config_utils",  # Config loading is verbose
+        "inference.installation",  # Suppress entire installation module
     ]
 
     # Only suppress noisy loggers if level did NOT come from environment variable

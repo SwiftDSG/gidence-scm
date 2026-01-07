@@ -46,8 +46,8 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 def _get_package_config_path(filename: str) -> Path | None:
     """Get config file path from package location (when installed via pip)."""
     try:
-        import hailo_apps.config
-        package_dir = Path(hailo_apps.config.__file__).parent
+        import inference.config
+        package_dir = Path(inference.config.__file__).parent
         config_path = package_dir / filename
         if config_path.exists():
             return config_path
@@ -58,7 +58,7 @@ def _get_package_config_path(filename: str) -> Path | None:
 
 def _get_repo_config_path(filename: str) -> Path:
     """Get config file path from repo location (when running from source)."""
-    return REPO_ROOT / "hailo_apps" / "config" / filename
+    return REPO_ROOT / "inference" / "config" / filename
 
 
 def _get_config_path(filename: str) -> str:
@@ -120,7 +120,7 @@ HOST_ARCH_DEFAULT = AUTO_DETECT
 HAILO_ARCH_DEFAULT = AUTO_DETECT
 MODEL_ZOO_VERSION_DEFAULT = "v2.17.0"
 RESOURCES_PATH_DEFAULT = RESOURCES_ROOT_PATH_DEFAULT
-VIRTUAL_ENV_NAME_DEFAULT = "venv_hailo_apps"
+VIRTUAL_ENV_NAME_DEFAULT = "optense"
 
 # Default TAPPAS post-processing directory - set via environment variable during installation
 # The installer runs: pkg-config --variable=tappas_postproc_lib_dir hailo-tappas-core

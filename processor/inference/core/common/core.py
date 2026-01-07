@@ -53,7 +53,7 @@ from .hailo_logger import get_logger
 from .installation_utils import detect_hailo_arch
 
 try:
-    from hailo_apps.config.config_manager import get_default_models, get_extra_models, get_all_models
+    from inference.config.config_manager import get_default_models, get_extra_models, get_all_models
 except ImportError:
     import sys
     from pathlib import Path
