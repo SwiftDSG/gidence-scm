@@ -9,7 +9,7 @@ gi.require_version("Gst", "1.0")
 import hailo
 from gi.repository import Gst
 
-from inference.detection_simple_pipeline import (
+from processor.inference.pipeline import (
     GStreamerDetectionSimpleApp,
 )
 
