@@ -77,7 +77,7 @@ detect  = "inference.detection_simple:main"
 post-install = "setup.installation.post_install:main"
 
 [tool.setuptools.packages.find]
-include = ["inference*", "setup*"]
+include = ["inference*", "setup*", "config*"]
 
 [tool.setuptools.package-data]
 "postprocess" = [

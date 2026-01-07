@@ -20,22 +20,22 @@ import argparse
 import os
 from pathlib import Path
 
-from hailo_apps.python.core.common.hailo_logger import get_logger
-from hailo_apps.python.core.common.core import load_environment
-from hailo_apps.python.core.common.defines import (
+from inference.core.common.hailo_logger import get_logger
+from inference.core.common.core import load_environment
+from inference.core.common.defines import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_DOTENV_PATH,
     DEFAULT_RESOURCES_CONFIG_PATH,
     RESOURCES_PATH_DEFAULT,
     RESOURCES_PATH_KEY,
 )
-from hailo_apps.config.config_manager import get_main_config
-from hailo_apps.installation.compile_cpp import compile_postprocess
-from hailo_apps.installation.download_resources import download_resources
-from hailo_apps.installation.set_env import (
+from setup.installation.compile_cpp import compile_postprocess
+from setup.installation.download_resources import download_resources
+from setup.installation.set_env import (
     handle_dot_env,
     set_environment_vars,
 )
+from config.config_manager import get_main_config
 
 hailo_logger = get_logger(__name__)
 
