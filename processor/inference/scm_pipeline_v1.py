@@ -211,15 +211,9 @@ def scm_pose_callback(element, buffer, user_data):
         roi = hailo.get_roi_from_buffer(buffer)
         print("ROI:", roi)
         
-        # Get tensor outputs (before post-processing)
-        tensors = []
-        for tensor in roi.get_tensors():
-            hailo_logger.info("Tensor:", tensor)
-            tensors.append({
-                'data': tensor.data(),
-                'shape': tensor.shape(),
-                'name': tensor.name()
-            })
+        # Get outputs (before post-processing)
+        hailo_logger.info("Tensors:", roi.get_tensors())
+        hailo_logger.info("Objects:", roi.get_objects())
 
 
         detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
