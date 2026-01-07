@@ -229,27 +229,27 @@ def scm_pose_callback(element, buffer, user_data):
             print("\n\n")
 
         keypoints = get_keypoints()
-        for detection in detections:
-            label = detection.get_label()
-            bbox = detection.get_bbox()
-            confidence = detection.get_confidence()
+        # for detection in detections:
+        #     label = detection.get_label()
+        #     bbox = detection.get_bbox()
+        #     confidence = detection.get_confidence()
 
-            if label == "person":
-                track_id = 0
-                track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
-                if len(track) == 1:
-                    track_id = track[0].get_id()
+        #     if label == "person":
+        #         track_id = 0
+        #         track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
+        #         if len(track) == 1:
+        #             track_id = track[0].get_id()
 
-                landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
-                if landmarks:
-                    points = landmarks[0].get_points()
-                    # for eye in ["left_eye", "right_eye"]:
-                    #     keypoint_index = keypoints[eye]
-                    #     point = points[keypoint_index]
-                    #     x = int((point.x() * bbox.width() + bbox.xmin()) * width)
-                    #     y = int((point.y() * bbox.height() + bbox.ymin()) * height)
-                    #     if user_data.use_frame:
-                    #         cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+        #         landmarks = detection.get_objects_typed(hailo.HAILO_LANDMARKS)
+        #         if landmarks:
+        #             points = landmarks[0].get_points()
+        #             # for eye in ["left_eye", "right_eye"]:
+        #             #     keypoint_index = keypoints[eye]
+        #             #     point = points[keypoint_index]
+        #             #     x = int((point.x() * bbox.width() + bbox.xmin()) * width)
+        #             #     y = int((point.y() * bbox.height() + bbox.ymin()) * height)
+        #             #     if user_data.use_frame:
+        #             #         cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
         if user_data.use_frame:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
