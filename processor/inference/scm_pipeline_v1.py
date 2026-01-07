@@ -230,7 +230,7 @@ class SCMUserCallbackClass(app_callback_class):
         self.pose_threshold = threshold
 
 
-def scm_pose_callback(pad, info, user_data):
+def scm_pose_callback(pad, buffer, user_data):
     """
     Callback function for processing pose detection results.
     
@@ -239,9 +239,9 @@ def scm_pose_callback(pad, info, user_data):
     """
     try:
         # Get the GStreamer buffer
-        buffer = info.get_buffer()
         if buffer is None:
-            return Gst.PadProbeReturn.OK
+            hailo_logger.warning("Received None buffer at frame=%s", user_data.get_count())
+            return
             
         # Get frame information
         caps = get_caps_from_pad(pad)
