@@ -13,7 +13,9 @@ gi.require_version("Gst", "1.0")
 import hailo
 from gi.repository import Gst
 
-from inference.core.common.core import get_pipeline_parser, handle_list_models_flag, resolve_hef_path
+from inference.core.common.core import get_pipeline_parser, handle_list_models_flag
+import os
+from pathlib import Path
 from inference.core.common.buffer_utils import get_caps_from_pad, get_numpy_from_buffer
 from inference.core.common.defines import (
     POSE_ESTIMATION_PIPELINE,
@@ -165,13 +167,20 @@ class SCMPoseDetectionApp(GStreamerApp):
         self.pose_threshold = self.options_menu.pose_threshold
         hailo_logger.info(f"Using pose threshold: {self.pose_threshold}")
         
-        # Resolve HEF path for pose detection model
-        self.hef_path = resolve_hef_path(
-            self.hef_path,
-            app_name=POSE_ESTIMATION_PIPELINE,
-            arch=self.arch
-        )
-        hailo_logger.info(f"Using HEF path: {self.hef_path}")
+        # Use local HEF model from processor/model/ directory
+        if self.hef_path is None:
+            # Get the directory where this script is located
+            script_dir = Path(__file__).parent
+            # Go up to processor directory and into model subdirectory
+            model_dir = script_dir.parent / "model"
+            self.hef_path = str(model_dir / "yolov8m_pose.hef")
+        
+        # Verify the model file exists
+        if not os.path.exists(self.hef_path):
+            hailo_logger.error(f"Model file not found: {self.hef_path}")
+            raise FileNotFoundError(f"Model file not found: {self.hef_path}")
+            
+        hailo_logger.info(f"Using local HEF model: {self.hef_path}")
         
         # Note: Pose estimation typically doesn't need post-processing .so file
         # as keypoints are directly available from the model output
