@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv_hailo_apps_minimal/
+venv/
+env/
+
+# Installation logs
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Resources (typically large files downloaded during installation)
+resources/
+local_resources/
+
+# Model files
+*.hef
+*.onnx
+*.pt
+*.pth
+
+# Video files
+*.mp4
+*.avi
+*.mov
+
+# Temporary files
+*.tmp
+*.temp

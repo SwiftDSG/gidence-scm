@@ -3,131 +3,43 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gidence-scm-processor"
-version = "25.12.0"
-description = "Safety Compliance Monitoring processor"
+name = "hailo-apps-minimal"
+version = "1.0.0"
+description = "Minimal Hailo AI detection_simple application"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 authors = [
-    {name = "SwiftDSG"},
+    {name = "Hailo Minimal"},
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    # Core dependencies
+    # Core dependencies for detection_simple
     "numpy",
     "setproctitle",
     "opencv-python",
     "python-dotenv",
     "pyyaml",
     "Pillow",
-    "lancedb",
-    # Dependencies from hace-internal (tracker, etc.)
+    # Dependencies from GStreamer integration
     "loguru",
-    "scipy>=1.9.3",
-    "lap",
-    "cython_bbox",
-    "tqdm",
 ]
 
 [project.optional-dependencies]
 # Development tools - install with: pip install -e ".[dev]"
 dev = [
-    "ruff>=0.5.7",
-    "pre-commit>=3.7.0",
     "pytest>=7.0.0",
-    "pytest-timeout>=2.0.0",
-]
-
-# Gen-AI dependencies (voice assistant, LLM, embeddings) - install with: pip install -e ".[gen-ai]"
-gen-ai = [
-    "PyAudio",
-    "piper-tts",
-    "sounddevice==0.5.1",
-]
-
-# OCR dependencies - install with: pip install -e ".[ocr]"
-ocr = [
-    "paddlepaddle",
-    "shapely",
-    "pyclipper",
-    "symspellpy",
-]
-
-# Speech recognition (Whisper) dependencies - install with: pip install -e ".[speech-rec]"
-speech-rec = [
-    "transformers==4.50.1",
-    "sounddevice==0.5.1",
-    "torch==2.6.0",
-    "torchvision==0.21.0",
-    "streamlit",
-]
-
-# CLIP dependencies - install with: pip install -e ".[clip]"
-clip = [
-    "openai-clip",
-    "torch==2.6.0",
-    "torchvision==0.21.0"
 ]
 
 [project.scripts]
-detect  = "inference.detection_simple:main"
-post-install = "setup.installation.post_install:main"
+hailo-detect-simple = "hailo_apps.python.pipeline_apps.detection_simple.detection_simple:main"
 
 [tool.setuptools.packages.find]
-include = ["inference*", "setup*", "config*"]
+include = ["hailo_apps*"]
 
 [tool.setuptools.package-data]
-"postprocess" = [
-    "meson.build",
-    "compile_postprocess.sh",
-    "cpp/**/*",
-]
-"config" = [
+"hailo_apps.config" = [
     "*.yaml",
 ]
-
-[tool.ruff]
-target-version = "py310"
-line-length = 100
-
-# Optional: keep Ruff off non-Python/third-party dirs
-exclude = [
-  ".git", ".hg", ".mypy_cache", ".ruff_cache", ".venv", "venv", "build", "dist",
-  "__pycache__", "site-packages",
-  "**/resources/**",
-  "**/cpp/**",
-]
-
-[tool.ruff.format]
-indent-style = "space"
-quote-style  = "double"
-line-ending  = "lf"
-
-[tool.ruff.lint]
-select = [
-  "E",   # pycodestyle errors
-  "F",   # pyflakes
-  "I",   # import sorting
-  "B",   # bugbear
-  "UP",  # pyupgrade
-  "C4",  # comprehensions
-  "W",   # pycodestyle warnings
-  "RUF", # ruff-specific rules
-]
-ignore = [
-  "E402",  # allow gi.require_version before imports
-  "F403",  # star import used
-  "F405",  # star import names undefined
-  "E501",  # line length handled by formatter
-]
-
-[tool.ruff.lint.isort]
-combine-as-imports = true
-
-# Example (use later if you want targeted ignores instead of global E402/F403/F405):
-# [tool.ruff.lint.per-file-ignores]
-# "hailo_apps/**/gstreamer/*.py" = ["E402"]
-# "**/__init__.py"               = ["F401"]

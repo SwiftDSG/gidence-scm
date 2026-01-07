@@ -1,53 +1,62 @@
-# Detection Simple Application
+# Hailo Apps Minimal - Detection Simple
 
-![Detection Simple Example](../../../../doc/images/detection.gif)
+This is a minimal version of the Hailo Apps repository containing only the `detection_simple` application and its core dependencies.
 
-#### Run the detection simple example:
+## Features
+
+- **detection_simple**: Lightweight object detection pipeline for Hailo AI accelerators
+- Minimal dependency footprint
+- Easy installation on Raspberry Pi and x86_64 systems
+
+## Quick Start
+
+### Installation
 ```bash
+./install.sh
+```
+
+### Usage
+```bash
+# Activate the environment
+source ./setup_env.sh
+
+# Run detection_simple
 hailo-detect-simple
 ```
-To close the application, press `Ctrl+C`.
 
-This is lightweight version of the detection example, mainly focusing on demonstrating Hailo performance while minimizing CPU load. The internal GStreamer video processing pipeline is simplified by minimizing video processing tasks, and the YOLOv6 Nano model is used.
+## Requirements
 
-The application will detect and classify various objects.
+- **Hardware**: Hailo AI accelerator (Hailo-8, Hailo-8L, or Hailo-10H)
+- **OS**: Ubuntu 20.04+ or Raspberry Pi OS
+- **Python**: 3.8+
+- **HailoRT**: Must be installed separately (contact Hailo for installation)
 
-For more details, please see the full detection application: [Full detection application](../../pipeline_apps/detection/README.md)
+## Directory Structure
 
-#### Running with Raspberry Pi Camera input:
-```bash
-hailo-detect-simple --input rpi
+```
+processor/
+├── hailo_apps/                    # Main Python package
+│   ├── python/
+│   │   ├── core/                  # Core utilities
+│   │   │   ├── common/            # Common utilities (logging, config, etc.)
+│   │   │   └── gstreamer/         # GStreamer integration
+│   │   └── pipeline_apps/
+│   │       └── detection_simple/  # Detection simple application
+│   └── config/                    # Configuration files
+├── install.sh                     # Installation script
+├── setup_env.sh                   # Environment activation (created by install)
+├── pyproject.toml                 # Python package configuration
+└── README.md                      # This file
 ```
 
-#### Running with USB camera input (webcam):
-There are 2 ways:
+## Notes
 
-Specify the argument `--input` to `usb`:
-```bash
-hailo-detect-simple --input usb
-```
+This minimal version:
+- Contains only the `detection_simple` application
+- Removes all other applications (pose estimation, segmentation, GenAI, etc.)
+- Keeps only essential core utilities
+- Maintains full functionality of the detection_simple pipeline
 
-This will automatically detect the available USB camera (if multiple are connected, it will use the first detected).
+## Original Repository
 
-Second way:
-
-Detect the available camera using this script:
-```bash
-get-usb-camera
-```
-Run example using USB camera input - Use the device found by the previous script:
-```bash
-hailo-detect-simple --input /dev/video<X>
-```
-
-For additional options, execute:
-```bash
-hailo-detect-simple --help
-```
-
-#### Running as Python script
-
-For examples:
-```bash
-python detection_simple.py --input usb
-```
+This is derived from the full [Hailo Apps](https://github.com/hailo-ai/hailo-apps) repository.
