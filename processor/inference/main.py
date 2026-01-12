@@ -109,13 +109,14 @@ def scm_callback(element, buffer, user_data):
                     and other_bbox[3] <= expanded_person_bbox[3]
                 ):
                     string_to_print += f"Person (conf: {person_conf:.2f}) has {other_label} (conf: {other_conf:.2f})\n"
+
+                # TODO: Rules for determining if PPE is correctly worn can be added here
             
-        
         print(string_to_print)
         return
             
     except Exception as e:
-        hailo_logger.error(f"Error in pose callback: {e}")
+        hailo_logger.error(f"Error in callback: {e}")
         return Gst.PadProbeReturn.OK
 
 

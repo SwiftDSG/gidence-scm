@@ -1,6 +1,8 @@
 # region imports
 # Standard library imports
 import setproctitle
+import os
+from pathlib import Path
 
 from inference.core.common.core import get_pipeline_parser, get_resource_path, handle_list_models_flag, resolve_hef_path
 from inference.core.common.defines import (
@@ -83,16 +85,31 @@ class GStreamerDetectionSimpleApp(GStreamerApp):
         )
         hailo_logger.info(f"Using HEF path: {self.hef_path}")
 
-        self.post_process_so = get_resource_path(
-            pipeline_name=SIMPLE_DETECTION_PIPELINE,
-            resource_type=RESOURCES_SO_DIR_NAME,
-            arch=self.arch,
-            model=SIMPLE_DETECTION_POSTPROCESS_SO_FILENAME,
-        )
-        hailo_logger.info(f"Using post-process shared object: {self.post_process_so}")
+        script_dir = Path(__file__).parent
 
-        self.post_function_name = SIMPLE_DETECTION_POSTPROCESS_FUNCTION
-        hailo_logger.info(f"Using post-process function name: {self.post_function_name}")
+        # Use local HEF model from processor/model/ directory
+        if self.hef_path is None:
+            # Get the directory where this script is located
+            # Go up to processor directory and into model subdirectory
+            model_dir = script_dir.parent / "inference" / "model"
+            self.hef_path = str(model_dir / "yolov8n.hef")
+        
+        # Verify the model file exists
+        if not os.path.exists(self.hef_path):
+            hailo_logger.error(f"Model file not found: {self.hef_path}")
+            raise FileNotFoundError(f"Model file not found: {self.hef_path}")
+            
+        hailo_logger.info(f"Using local HEF model: {self.hef_path}")
+        
+        # Use local post-processing SO from processor/inference/so/ directory
+        so_dir = script_dir.parent / "inference" / "so"
+        self.post_process_so = str(so_dir / "yolov8.so")
+        self.post_process_function = "filter"
+
+        # Verify the so file exists
+        if not os.path.exists(self.post_process_so):
+            hailo_logger.error(f"Post-process SO file not found: {self.post_process_so}")
+            raise FileNotFoundError(f"Post-process SO file not found: {self.post_process_so}")
 
         # User-defined label JSON file
         self.labels_json = self.options_menu.labels_json
@@ -126,7 +143,7 @@ class GStreamerDetectionSimpleApp(GStreamerApp):
         detection_pipeline = INFERENCE_PIPELINE(
             hef_path=self.hef_path,
             post_process_so=self.post_process_so,
-            post_function_name=self.post_function_name,
+            post_process_function=self.post_process_function,
             batch_size=self.batch_size,
             config_json=self.labels_json,
             additional_params=self.thresholds_str,
