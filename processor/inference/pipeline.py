@@ -77,14 +77,6 @@ class GStreamerDetectionSimpleApp(GStreamerApp):
         # Architecture is already handled by GStreamerApp parent class
         # Use self.arch which is set by parent
 
-        # Resolve HEF path with smart lookup and auto-download
-        self.hef_path = resolve_hef_path(
-            self.hef_path,
-            app_name=SIMPLE_DETECTION_PIPELINE,
-            arch=self.arch
-        )
-        hailo_logger.info(f"Using HEF path: {self.hef_path}")
-
         script_dir = Path(__file__).parent
 
         # Use local HEF model from processor/model/ directory
