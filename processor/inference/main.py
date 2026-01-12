@@ -88,6 +88,9 @@ def scm_callback(element, buffer, user_data):
             person_bbox = person["bbox"]
             person_conf = person["confidence"]
 
+            person_x1, person_y1, person_x2, person_y2 = person_bbox
+            hailo_logger.debug(f"Person detected with bbox: x1={person_x1}, y1={person_y1}, x2={person_x2}, y2={person_y2}")
+
             # Loop for other detections to see if they belong to this person
             for other in others:
                 other_bbox = other["bbox"]
