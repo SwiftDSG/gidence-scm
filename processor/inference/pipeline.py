@@ -135,7 +135,7 @@ class GStreamerDetectionSimpleApp(GStreamerApp):
         detection_pipeline = INFERENCE_PIPELINE(
             hef_path=self.hef_path,
             post_process_so=self.post_process_so,
-            post_process_function=self.post_process_function,
+            post_function_name=self.post_process_function,
             batch_size=self.batch_size,
             config_json=self.labels_json,
             additional_params=self.thresholds_str,
