@@ -92,31 +92,33 @@ def scm_callback(element, buffer, user_data):
             person_ymin = person_bbox.ymin()
             person_xmax = person_bbox.xmax()
             person_ymax = person_bbox.ymax()
-            hailo_logger.info(f"Person detected with bbox: x1={person_xmin}, y1={person_ymin}, x2={person_xmax}, y2={person_ymax}")
 
             # Loop for other detections to see if they belong to this person
-            # for other in others:
-            #     other_bbox = other["bbox"]
-            #     other_conf = other["confidence"]
-            #     other_label = other["label"]
+            for other in others:
+                other_bbox = other["bbox"]
+                other_conf = other["confidence"]
+                other_label = other["label"]
 
-            #     # Simple IoU check or containment check can be implemented here
-            #     # For simplicity, make the person's bbox 10% larger for containment check
-            #     expanded_person_bbox = [
-            #         person_bbox[0] - 0.05 * (person_bbox[2] - person_bbox[0]),
-            #         person_bbox[1] - 0.05 * (person_bbox[3] - person_bbox[1]),
-            #         person_bbox[2] + 0.05 * (person_bbox[2] - person_bbox[0]),
-            #         person_bbox[3] + 0.05 * (person_bbox[3] - person_bbox[1]),
-            #     ]
-            #     if (
-            #         other_bbox[0] >= expanded_person_bbox[0]
-            #         and other_bbox[1] >= expanded_person_bbox[1]
-            #         and other_bbox[2] <= expanded_person_bbox[2]
-            #         and other_bbox[3] <= expanded_person_bbox[3]
-            #     ):
-            #         string_to_print += f"Person (conf: {person_conf:.2f}) has {other_label} (conf: {other_conf:.2f})\n"
+                other_xmin = other_bbox.xmin()
+                other_ymin = other_bbox.ymin()
+                other_xmax = other_bbox.xmax()
+                other_ymax = other_bbox.ymax()
 
-            #     # TODO: Rules for determining if PPE is correctly worn can be added here
+                # Simple IoU check or containment check can be implemented here
+                # For simplicity, make the person's bbox 10% larger for containment check
+                person_expanded_xmin = person_xmin - 0.05 * (person_xmax - person_xmin)
+                person_expanded_ymin = person_ymin - 0.05 * (person_ymax - person_ymin)
+                person_expanded_xmax = person_xmax + 0.05 * (person_xmax - person_xmin)
+                person_expanded_ymax = person_ymax + 0.05 * (person_ymax - person_ymin) 
+                if (
+                    other_xmin >= person_expanded_xmin and
+                    other_ymin >= person_expanded_ymin and
+                    other_xmax <= person_expanded_xmax and
+                    other_ymax <= person_expanded_ymax
+                ):
+                    string_to_print += f"Person (conf: {person_conf:.2f}) has {other_label} (conf: {other_conf:.2f})\n"
+
+                # TODO: Rules for determining if PPE is correctly worn can be added here
             
         print(string_to_print)
         return
