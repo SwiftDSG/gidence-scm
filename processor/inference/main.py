@@ -88,9 +88,12 @@ def scm_callback(element, buffer, user_data):
             person_bbox = person["bbox"]
             person_conf = person["confidence"]
 
-            person_x1, person_y1, person_x2, person_y2 = person_bbox
-            hailo_logger.debug(f"Person detected with bbox: x1={person_x1}, y1={person_y1}, x2={person_x2}, y2={person_y2}")
-
+            person_xmin = person_bbox.xmin()
+            person_ymin = person_bbox.ymin()
+            person_xmax = person_bbox.xmax()
+            person_ymax = person_bbox.ymax()
+            hailo_logger.debug(f"Person detected with bbox: x1={person_xmin}, y1={person_ymin}, x2={person_xmax}, y2={person_ymax}")
+            
             # Loop for other detections to see if they belong to this person
             for other in others:
                 other_bbox = other["bbox"]
