@@ -59,10 +59,57 @@ def scm_callback(element, buffer, user_data):
         roi = hailo.get_roi_from_buffer(buffer)
         detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
 
+        persons = []
+        others = []
+
+        # First loop: Create a map of persons, body parts, and PPE detections
         for detection in detections:
-            string_to_print += (
-                f"Detection: {detection.get_label()} Confidence: {detection.get_confidence():.2f}\n"
-            )
+            label = detection.get_label()
+            bbox = detection.get_bbox()
+            confidence = detection.get_confidence()
+
+            if confidence < 0.3:
+                continue
+
+            det = {
+                "label": label,
+                "bbox": bbox,
+                "confidence": confidence,
+            }
+
+            if label == "person":
+                persons.append(det)
+            else:
+                others.append(det)
+
+
+        # Second loop: Analyze relationships (e.g., PPE on persons)
+        for person in persons:
+            person_bbox = person["bbox"]
+            person_conf = person["confidence"]
+
+            # Loop for other detections to see if they belong to this person
+            for other in others:
+                other_bbox = other["bbox"]
+                other_conf = other["confidence"]
+                other_label = other["label"]
+
+                # Simple IoU check or containment check can be implemented here
+                # For simplicity, make the person's bbox 10% larger for containment check
+                expanded_person_bbox = [
+                    person_bbox[0] - 0.05 * (person_bbox[2] - person_bbox[0]),
+                    person_bbox[1] - 0.05 * (person_bbox[3] - person_bbox[1]),
+                    person_bbox[2] + 0.05 * (person_bbox[2] - person_bbox[0]),
+                    person_bbox[3] + 0.05 * (person_bbox[3] - person_bbox[1]),
+                ]
+                if (
+                    other_bbox[0] >= expanded_person_bbox[0]
+                    and other_bbox[1] >= expanded_person_bbox[1]
+                    and other_bbox[2] <= expanded_person_bbox[2]
+                    and other_bbox[3] <= expanded_person_bbox[3]
+                ):
+                    string_to_print += f"Person (conf: {person_conf:.2f}) has {other_label} (conf: {other_conf:.2f})\n"
+            
         
         print(string_to_print)
         return

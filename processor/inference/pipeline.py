@@ -92,9 +92,11 @@ class GStreamerDetectionSimpleApp(GStreamerApp):
         hailo_logger.info(f"Using post-process shared object: {self.post_process_so}")
 
         self.post_function_name = SIMPLE_DETECTION_POSTPROCESS_FUNCTION
+        hailo_logger.info(f"Using post-process function name: {self.post_function_name}")
 
         # User-defined label JSON file
         self.labels_json = self.options_menu.labels_json
+        hailo_logger.info(f"Using labels JSON file: {self.labels_json}")
 
         self.app_callback = app_callback
 
