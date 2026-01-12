@@ -1064,6 +1064,17 @@ As you develop the SCM pipeline, keep asking:
 | Jan 12    | Testing        | 4-5             | Complete documentation      |
 | **Total** | **7 days**     | **22-29 hours** | **Production-ready system** |
 
+## Real-World Findings (Jan 8, 2026)
+
+### **Camera Angle Challenge**
+
+**Discovery:** Unilever cameras are ceiling-mounted (8-10m high) with
+downward angles (45-60°). This causes:
+
+- People appear 30-80 pixels tall (very small)
+- Top-down view uncommon in COCO training data
+- YOLOv8-pose keypoints fail to detect reliably
+
 ---
 
 ## Final Notes

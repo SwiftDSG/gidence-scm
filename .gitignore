@@ -1,6 +1,8 @@
 hailo-apps
 x
 optense
+annotator/input
+annotator/output
 
 # Byte-compiled files
 __pycache__/
