@@ -14,7 +14,7 @@ from inference.pipeline import (
     GStreamerDetectionSimpleApp,
 )
 
-from inference.core.common.buffer_utils import get_numpy_from_buffer
+from inference.core.common.buffer_utils import get_caps_from_pad, get_numpy_from_buffer
 from inference.core.common.hailo_logger import get_logger
 from inference.core.gstreamer.gstreamer_app import app_callback_class
 
