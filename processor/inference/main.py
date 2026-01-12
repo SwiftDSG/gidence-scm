@@ -3,7 +3,6 @@
 
 # Third-party imports
 import gi
-from processor.inference.core.common.buffer_utils import get_numpy_from_buffer
 
 gi.require_version("Gst", "1.0")
 
@@ -15,13 +14,13 @@ from inference.pipeline import (
     GStreamerDetectionSimpleApp,
 )
 
+from inference.core.common.buffer_utils import get_numpy_from_buffer
 from inference.core.common.hailo_logger import get_logger
 from inference.core.gstreamer.gstreamer_app import app_callback_class
 
 hailo_logger = get_logger(__name__)
 
 # endregion imports
-
 
 # -----------------------------------------------------------------------------------------------
 # User-defined class to be used in the callback function: Inheritance from the app_callback_class
