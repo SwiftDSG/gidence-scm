@@ -20,8 +20,8 @@ This is a minimal version of the Hailo Apps repository containing only the `dete
 # Activate the environment
 source ./setup_env.sh
 
-# Run detection_simple
-hailo-detect-simple
+# Run the inference engine
+run
 ```
 
 ## Requirements

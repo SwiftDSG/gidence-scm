@@ -9,7 +9,7 @@ This script:
 4. Creates a folder ready to upload to Roboflow
 
 Usage:
-    python test_and_export_annotations.py --model best.pt --images ./test_images --output ./roboflow_ready
+    python test_and_export_annotations.py --model best.pt --input ./input --output ./output
 """
 
 import argparse
@@ -51,25 +51,29 @@ def export_roboflow_annotations(model_path, image_dir, output_dir, conf_threshol
     # Get all images
     image_dir = Path(image_dir)
     image_files = []
+    image_count = 0
     for ext in ['*.jpg', '*.jpeg', '*.png', '*.JPG', '*.JPEG', '*.PNG']:
         image_files.extend(list(image_dir.glob(ext)))
+        image_count += len(list(image_dir.glob(ext)))
     
-    print(f"\nFound {len(image_files)} images to process")
+    print(f"\nFound {image_count} images to process")
     
-    if len(image_files) == 0:
+    if image_count == 0:
         print(f"ERROR: No images found in {image_dir}")
         return
     
     # Process each image
     stats = {
-        'total_images': len(image_files),
+        'total_images': image_count,
         'images_with_detections': 0,
         'total_detections': 0,
         'detections_per_class': {name: 0 for name in class_names.values()}
     }
+
+    enumerated_images = enumerate(image_files, 1)
     
-    for i, img_path in enumerate(image_files, 1):
-        print(f"Processing {i}/{len(image_files)}: {img_path.name}", end='... ')
+    for i, img_path in enumerated_images:
+        print(f"Processing {i}/{image_count}: {img_path.name}", end='... ')
         
         # Run inference
         results = model.predict(
@@ -186,9 +190,9 @@ def export_roboflow_annotations(model_path, image_dir, output_dir, conf_threshol
 
 def main():
     parser = argparse.ArgumentParser(description='Export Roboflow-ready annotations from model')
-    parser.add_argument('--model', default='./annotator/best.pt', help='Path to trained model (.pt file)')
-    parser.add_argument('--images', default='./annotator/input', help='Directory containing images')
-    parser.add_argument('--output', default='./annotator/output', help='Output directory')
+    parser.add_argument('--model', default='./model/best.pt', help='Path to trained model (.pt file)')
+    parser.add_argument('--input', default='./input', help='Directory containing images')
+    parser.add_argument('--output', default='./output', help='Output directory')
     parser.add_argument('--conf', type=float, default=0.5, help='Confidence threshold')
     
     args = parser.parse_args()
@@ -196,7 +200,7 @@ def main():
     # Run export
     stats = export_roboflow_annotations(
         model_path=args.model,
-        image_dir=args.images,
+        image_dir=args.input,
         output_dir=args.output,
         conf_threshold=args.conf
     )
