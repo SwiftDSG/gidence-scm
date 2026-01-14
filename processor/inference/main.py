@@ -71,7 +71,6 @@ from inference.association import (
     assign_detections_to_persons,
     check_compliance_all_persons,
 )
-from processor.inference.udp import UDPSender
 
 logger = get_logger(__name__)
 
