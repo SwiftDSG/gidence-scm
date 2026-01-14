@@ -113,7 +113,7 @@ class SCMConfig:
         with open(path, 'r') as f:
             config = json.load(f)
             self.model = config.get("model", "yolov8n.hef")
-            self.cameras = config.get("camera", [])
+            self.camera = config.get("camera", [])
             self.udp = config.get("udp", None)
 
         logger.info("Configuration loaded successfully")
@@ -270,7 +270,7 @@ def main():
     data = SCM()
 
     # Create and run SCM pipeline
-    app = SCMPipeline(callback, data, data.config["cameras"], model=data.config["model"])
+    app = SCMPipeline(callback, data, data.config.camera, model=data.config.model)
     app.run()
 
 if __name__ == "__main__":
