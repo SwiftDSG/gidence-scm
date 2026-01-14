@@ -60,7 +60,7 @@ gi.require_version("Gst", "1.0")
 from gi.repository import Gst
 
 from inference.pipeline import SCMPipeline
-from processor.inference.uds import UDSSender
+from inference.uds import UDSSender
 
 from inference.core.common.buffer_utils import get_caps_from_pad, get_numpy_from_buffer
 from inference.core.common.hailo_logger import get_logger
