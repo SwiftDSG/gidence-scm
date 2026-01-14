@@ -10,7 +10,7 @@ Data Structure (simplified):
     "timestamp": 1704672345123 # epoch time in milliseconds
     "person": [
         {
-            "person_id": "person_000",
+            "id": "person_000",
             "bbox": [100, 150, 200, 350],
             "confidence": 0.95,
             "part": [
@@ -68,6 +68,7 @@ VIOLATION_KINDS = {
     "missing_shoes",
     "missing_facemask",
     "missing_earmuffs",
+    "missing_safetyvest",
     "improperly_worn_gloves",
     "improperly_worn_shoes",
     "improperly_worn_facemask",
@@ -176,7 +177,12 @@ def check_compliance_for_person(
        - (TODO) Head + hardhat (outside head bbox) → VIOLATION (improperly_worn_hardhat)
        - Neither → skip
 
-    6. Face / Head (if facemask is present) and Glasses (NOT IMPLEMENTED):
+    6. Safetyvest (DIFFERENT):
+       NOTE: Safetyvest is not tied to any body part detection
+       - Safetyvest present → compliant
+       - Safetyvest absent → VIOLATION (missing_safetyvest)
+
+    7. Face / Head (if facemask is present) and Glasses (NOT IMPLEMENTED):
        NOTE: Only use head if facemask is properly worn (face won't be detected)
        - (TODO) Face + glasses → compliant
        - (TODO) Face + glasses (outside face bbox) → VIOLATION (improperly_worn_glasses)
@@ -249,6 +255,15 @@ def check_compliance_for_person(
         # Hardhat present but head not visible - treat as compliant
         pass
 
+    # ========== Logic 6: Safetyvest (DIFFERENT) ==========
+    has_safetyvest = "safetyvest" in equipment_labels
+
+    if has_safetyvest:
+        # Compliant - safetyvest present
+        pass
+    else:
+        violations.append("missing_safetyvest")
+
     return violations
 
 
@@ -261,7 +276,7 @@ def check_compliance_all_persons(
     Returns:
         [
             {
-                "person_id": "person_000",
+                "id": "person_000",
                 "bbox": [100, 150, 200, 350],
                 "confidence": 0.95,
                 "part": [...],
@@ -275,7 +290,7 @@ def check_compliance_all_persons(
 
     for i, assignment in person_assignments.items():
         person = assignment["person"]
-        person_id = person["person_id"]
+        person_id = person["id"]
 
         # Check compliance
         violations = check_compliance_for_person(assignment)
@@ -289,7 +304,7 @@ def check_compliance_all_persons(
 
         # Build person data
         person_data = {
-            "person_id": person_id,
+            "id": person_id,
             "bbox": person_bbox,
             "confidence": person["confidence"],
             "part": assignment["part"],

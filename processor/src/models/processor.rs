@@ -11,13 +11,12 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Processor {
     pub id: String,
-    pub cluster_id: Option<String>,
     pub name: String,
+    pub model: String,
     pub address: ProcessorAddress,
     pub camera: Vec<ProcessorCamera>,
-    pub model: String,
+    pub webhook: Vec<ProcessorWebhook>,
     pub udp: Option<ProcessorUdp>,
-    pub server: Option<ProcessorServer>,
     pub version: String,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -31,10 +30,27 @@ pub struct ProcessorUdp {
     pub port: u16,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ProcessorServer {
-    pub host: [u8; 4],
-    pub port: u16,
+pub struct ProcessorWebhook {
+    pub host: ProcessorWebhookHost,
+    pub port: Option<u16>,
+    pub path: String,
+    pub secure: bool,
 }
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum ProcessorWebhookHost {
+    Domain(String),
+    IPv4([u8; 4]),
+}
+impl ProcessorWebhookHost {
+    pub fn to_string(&self) -> String {
+        match self {
+            ProcessorWebhookHost::Domain(domain) => domain.clone(),
+            ProcessorWebhookHost::IPv4(ip) => format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProcessorCamera {
     pub id: String,
@@ -71,14 +87,13 @@ impl Processor {
 
                 let processor = Self {
                     id: id.clone(),
-                    cluster_id: None,
                     name: id,
+                    model: "yolov8n.hef".to_string(),
                     address: ProcessorAddress { host, port: 8000 },
                     camera: vec![],
-                    model: "yolov8n.hef".to_string(),
-                    version: Uuid::new_v4().to_string(),
+                    webhook: vec![],
                     udp: None,
-                    server: None,
+                    version: Uuid::new_v4().to_string(),
                 };
 
                 write("processor.json", serde_json::to_string(&processor).unwrap()).unwrap();
@@ -98,50 +113,25 @@ impl Processor {
     }
 }
 
-impl ProcessorServer {
-    pub async fn register(&self, processor_address: &ProcessorAddress) -> bool {
-        let address = format!(
-            "http://{}.{}.{}.{}:{}",
-            self.host[0], self.host[1], self.host[2], self.host[3], self.port
+impl ProcessorWebhook {
+    fn to_string(&self) -> String {
+        let mut url = format!(
+            "{}://{}",
+            if self.secure { "https" } else { "http" },
+            self.host.to_string()
         );
 
-        let client = Client::new();
-        let payload = serde_json::to_string(processor_address).unwrap();
-        let response = match client
-            .post(&format!("{}/register", address))
-            .header("Content-Type", "application/json")
-            .body(payload)
-            .send()
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => {
-                println!("Failed to reach server {}: {}", address, e);
-                return false;
-            }
-        };
-
-        if response.status().is_success() {
-            true
-        } else {
-            false
+        if let Some(port) = self.port {
+            url = format!("{}:{}", url, port);
         }
+
+        format!("{}/{}", url, self.path.trim_start_matches('/'))
     }
-    pub async fn ping(&self, processor_id: &str, processor_version: &str) -> bool {
-        let address = format!(
-            "http://{}.{}.{}.{}:{}",
-            self.host[0], self.host[1], self.host[2], self.host[3], self.port
-        );
+    pub async fn ping(&self) -> bool {
+        let address = self.to_string();
 
         let client = Client::new();
-        let response = match client
-            .get(&format!(
-                "{}/{}/{}",
-                address, processor_id, processor_version
-            ))
-            .send()
-            .await
-        {
+        let response = match client.get(&address).send().await {
             Ok(response) => response,
             Err(_) => {
                 return false;

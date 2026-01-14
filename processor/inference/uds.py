@@ -1,20 +1,22 @@
 """
-UDP Sender for SCM Violations
+UDS Sender for SCM Violations
 
-Sends violation messages to Rust runtime via UDP in JSON format.
+Sends violation messages to Rust runtime via UDS in JSON format.
 """
 
 import json
 import socket
+import time
+import os
 from typing import Dict, List, Any
 
 from inference.core.common.hailo_logger import get_logger
 
 logger = get_logger(__name__)
 
-class UDPSender:
+class UDSSender:
     """
-    Sends evidence messages to Rust runtime via UDP.
+    Sends evidence messages to Rust runtime via UDS.
 
     Message Format:
     {
@@ -23,7 +25,7 @@ class UDPSender:
         "timestamp": 1704672345123 # epoch time in milliseconds
         "person": [
             {
-                "person_id": "person_000",
+                "id": "person_000",
                 "bbox": [100, 150, 200, 350],
                 "confidence": 0.95,
                 "part": [
@@ -48,26 +50,27 @@ class UDPSender:
     }
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 8888):
+    def __init__(self):
         """
-        Initialize UDP sender.
+        Initialize UDS sender.
 
         Args:
             host: Rust runtime host (default: localhost)
             port: Rust runtime port (default: 8888)
         """
-        self.host = host
-        self.port = port
-        self.address = (host, port)
+        self.path = "/tmp/gidence-scm_uds.sock"
 
-        # Create UDP socket
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # Create UDS socket
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
-        # Statistics
+        while not os.path.exists(self.path):
+            print(f"Waiting for {self.path} to be created...")
+            time.sleep(1)
+
+        logger.info(f"UDS Sender initialized: {self.path}")
+
         self.messages_sent = 0
         self.messages_failed = 0
-
-        logger.info(f"UDP Sender initialized: {host}:{port}")
 
     def send(self, camera_id: str, frame_id: str, timestamp: int, person: List[Dict[str, Any]]) -> bool:
         """
@@ -78,7 +81,7 @@ class UDPSender:
             frame_id: Frame identifier (e.g., "frame_001")
             timestamp: Epoch time in milliseconds
             person: List of person dictionaries with keys:
-                - person_id: str (e.g., "person_000")
+                - id: str (e.g., "person_000")
                 - bbox: List[float] [xmin, ymin, xmax, ymax]
                 - confidence: float
                 - part: List[Dict] (body parts)
@@ -97,10 +100,11 @@ class UDPSender:
 
         try:
             # Serialize to JSON
-            json_data = json.dumps(message)
+            payload = json.dumps(message).encode('utf-8')
 
-            # Send via UDP
-            self.sock.sendto(json_data.encode('utf-8'), self.address)
+            # Send via UDS
+            self.sock.connect(self.path)
+            self.sock.sendall(payload)
 
             self.messages_sent += 1
             logger.debug(f"Sent violation: camera={camera_id}, frame={frame_id}, person_count={len(person)}")
@@ -113,6 +117,6 @@ class UDPSender:
             return False
 
     def close(self):
-        """Close the UDP socket."""
+        """Close the UDS socket."""
         self.sock.close()
-        logger.info(f"UDP Sender closed. Stats: {self.get_stats()}")
+        logger.info(f"UDS Sender closed. Stats: {self.get_stats()}")

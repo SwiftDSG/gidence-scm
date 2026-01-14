@@ -1,9 +1,16 @@
 use models::processor::Processor;
+use serde_json::from_slice;
 use std::process::{Command, Stdio};
-use tokio::time::{Duration, sleep};
+use tokio::{
+    fs,
+    io::AsyncReadExt,
+    net::UnixListener,
+    time::{Duration, sleep},
+};
+
+use crate::models::evidence::Evidence;
 
 mod models;
-
 
 #[tokio::main]
 async fn main() {
@@ -22,7 +29,40 @@ async fn main() {
             udp.host[0], udp.host[1], udp.host[2], udp.host[3], udp.port
         );
     }
-    println!();
+
+    // TODO: Add UDP receiver here to listen for violations from Python
+    let _ = fs::remove_file("/tmp/gidence-scm_uds.sock").await;
+    let listener = UnixListener::bind("/tmp/gidence-scm_uds.sock").unwrap();
+    let _ = tokio::spawn(async move {
+        loop {
+            let (mut stream, _) = match listener.accept().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    eprintln!("[UDS] Failed to accept connection: {}", e);
+                    continue;
+                }
+            };
+            let mut buffer = vec![0; 1024];
+
+            if let Err(e) = stream.read(&mut buffer).await {
+                println!("Error reading from stream: {}", e);
+                continue;
+            }
+
+            let filled_len = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+
+            let evidence = match from_slice::<Evidence>(buffer[0..filled_len].as_ref()) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("Error parsing JSON: {}", e);
+                    continue;
+                }
+            };
+
+            // TODO: Process the received Evidence struct as needed
+            println!("[UDS] Received Evidence: {:?}", evidence);
+        }
+    });
 
     // Spawn inference engine thread with auto-restart capability
     let _ = tokio::spawn(async move {
@@ -83,18 +123,6 @@ async fn main() {
         println!("[Inference Engine] Thread exiting");
     })
     .await;
-
-    // TODO: Add UDP receiver here to listen for violations from Python
-    // Example:
-    // let udp_thread = thread::spawn(move || {
-    //     listen_udp(&processor);
-    // });
-
-    // TODO: Register with server and start heartbeat
-    // Example:
-    // if let Some(server) = &processor.server {
-    //     server.register(&processor.address).await;
-    // }
 
     println!("\n=== SCM Processor Shutdown ===");
 }

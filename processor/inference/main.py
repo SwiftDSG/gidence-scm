@@ -6,7 +6,7 @@ Evidence JSON Format:
     "timestamp": 1704672345123 # epoch time in milliseconds
     "person": [
         {
-            "person_id": "person_000",
+            "id": "person_000",
             "bbox": [100, 150, 200, 350],
             "confidence": 0.95,
             "part": [
@@ -60,7 +60,7 @@ gi.require_version("Gst", "1.0")
 from gi.repository import Gst
 
 from inference.pipeline import SCMPipeline
-from inference.udp import UDPSender
+from processor.inference.uds import UDSSender
 
 from inference.core.common.buffer_utils import get_caps_from_pad, get_numpy_from_buffer
 from inference.core.common.hailo_logger import get_logger
@@ -114,7 +114,6 @@ class SCMConfig:
             config = json.load(f)
             self.model = config.get("model", "yolov8n.hef")
             self.camera = config.get("camera", [])
-            self.udp = config.get("udp", None)
 
         logger.info("Configuration loaded successfully")
 
@@ -128,16 +127,7 @@ class SCM(app_callback_class):
 
         # Load SCM configuration
         self.config = SCMConfig()
-
-        # Initialize UDP sender
-        if self.config.udp is not None:
-            self.udp = UDPSender(
-                host=self.config.udp.get("host", "127.0.0.1"),
-                port=self.config.udp.get("port", 8888)
-            )
-        else:
-            self.udp = None
-
+        self.uds = UDSSender()
 
 # -----------------------------------------------------------------------------------------------
 # User-defined callback function
@@ -204,7 +194,7 @@ def callback(element, buffer, data):
                 else:
                     continue  # Skip if no track ID
 
-                det["person_id"] = f"person_{track_id:03d}"
+                det["id"] = f"{track_id:03d}"
                 persons.append(det)
             else:
                 others.append(det)
@@ -228,31 +218,17 @@ def callback(element, buffer, data):
                 break
         
         if violating:
-            if data.udp is None:
-                # (TODO) Log violation locally
-                logger.info(f"[{camera_id}] Violation detected in frame {frame_idx}, but UDP not configured.")
-                for person in persons:
-                    string_to_print = f" Person ID: {person['person_id']}"
-
-                    # Log bbox and violations
-                    string_to_print += f", BBox: {person['bbox']}"
-                    string_to_print += f", Violations: {person['violation']}"
-
-                    # Log
-                    logger.info(string_to_print)
+            # (TODO) Prepare UDS message
+            success = data.uds.send(
+                camera_id=camera_id,
+                frame_id=f"frame_{frame_idx:06d}",
+                timestamp=timestamp,
+                person=persons
+            )
+            if success:
+                logger.info(f"[{camera_id}] Sent violation for frame {frame_idx} via UDP")
             else:
-                # (TODO) Prepare UDP message
-                # success = data.udp.send(
-                #     camera_id=camera_id,
-                #     frame_id=f"frame_{frame_idx:06d}",
-                #     timestamp=timestamp,
-                #     person=persons
-                # )
-                # if success:
-                #     logger.info(f"[{camera_id}] Sent violation for frame {frame_idx} via UDP")
-                # else:
-                #     logger.error(f"[{camera_id}] Failed to send violation for frame {frame_idx} via UDP")
-                pass
+                logger.error(f"[{camera_id}] Failed to send violation for frame {frame_idx} via UDP")
             
             # (TODO) save frame as evidence image
 
