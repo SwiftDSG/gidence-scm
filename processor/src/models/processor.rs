@@ -75,7 +75,7 @@ impl Processor {
                     name: id,
                     address: ProcessorAddress { host, port: 8000 },
                     camera: vec![],
-                    model: "yolov8n".to_string(),
+                    model: "yolov8n.hef".to_string(),
                     version: Uuid::new_v4().to_string(),
                     udp: None,
                     server: None,
