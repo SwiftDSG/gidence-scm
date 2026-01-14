@@ -102,16 +102,19 @@ class SCMConfig:
             script_dir = Path(__file__).parent.parent
             path = script_dir / "config.json"
 
-        self.path = Path(path)
+        path = Path(path)
 
-        if not self.path.exists():
-            logger.error(f"Config file not found: {self.path}")
-            raise FileNotFoundError(f"Config file not found: {self.path}")
+        if not path.exists():
+            logger.error(f"Config file not found: {path}")
+            raise FileNotFoundError(f"Config file not found: {path}")
 
-        logger.info(f"Loading config from: {self.path}")
+        logger.info(f"Loading config from: {path}")
 
-        with open(self.path, 'r') as f:
-            self.config = json.load(f)
+        with open(path, 'r') as f:
+            config = json.load(f)
+            self.model = config.get("model", "yolov8n.hef")
+            self.cameras = config.get("camera", [])
+            self.udp = config.get("udp", None)
 
         logger.info("Configuration loaded successfully")
 
@@ -127,10 +130,10 @@ class SCM(app_callback_class):
         self.config = SCMConfig()
 
         # Initialize UDP sender
-        if self.config["udp"] is not None:
+        if self.config.udp is not None:
             self.udp = UDPSender(
-                host=self.config["udp"].get("host", "127.0.0.1"),
-                port=self.config["udp"].get("port", 8888)
+                host=self.config.udp.get("host", "127.0.0.1"),
+                port=self.config.udp.get("port", 8888)
             )
         else:
             self.udp = None
