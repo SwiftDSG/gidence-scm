@@ -146,8 +146,8 @@ class SCMPipeline(GStreamerApp):
 
         inference_string = f"hailoroundrobin mode=1 name=robin ! {detection_pipeline} ! {tracker_pipeline} ! {user_callback_pipeline} ! {QUEUE(name='call_q', max_size_buffers=30)} ! hailostreamrouter name=router "
 
-        for id in range(self.video_sources):
-            inference_string += f"src_{id}::input-streams=\"<sink_{id}>\" "
+        for i, _ in enumerate(self.video_sources):
+            inference_string += f"src_{i}::input-streams=\"<sink_{i}>\" "
 
         pipeline_string = sources_string + inference_string + router_string
 
