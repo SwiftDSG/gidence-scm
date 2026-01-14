@@ -94,13 +94,13 @@ class SCMConfig:
         Load configuration from JSON file.
 
         Args:
-            path: Path to config.json file
-                If None, uses default: processor/config.json
+            path: Path to processor.json file
+                If None, uses default: processor/processor.json
         """
         if path is None:
-            # Default path: processor/config.json
+            # Default path: processor/processor.json
             script_dir = Path(__file__).parent.parent
-            path = script_dir / "config.json"
+            path = script_dir / "processor.json"
 
         path = Path(path)
 

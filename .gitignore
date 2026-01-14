@@ -4,6 +4,12 @@ optense
 annotator/input
 annotator/output
 
+# Main runtime build artifacts
+processor/target
+
+# Configuration files with sensitive information
+processor/processor.json
+
 # Byte-compiled files
 __pycache__/
 hailo_apps_infra/__pycache__/
