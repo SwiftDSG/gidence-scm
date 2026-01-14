@@ -36,7 +36,7 @@ hailo_logger = get_logger(__name__)
 
 # This class inherits from the hailo_rpi_common.GStreamerApp class
 class SCMPipeline(GStreamerApp):
-    def __init__(self, app_callback, user_data, cameras, parser=None):
+    def __init__(self, app_callback, user_data, cameras, model="yolov8n.hef", parser=None):
         if parser is None:
             parser = get_pipeline_parser()
         parser.add_argument(
@@ -81,11 +81,8 @@ class SCMPipeline(GStreamerApp):
                 self.video_sources.append(cam["url"])
 
         # Use local HEF model from processor/inference/model/ directory
-        if self.hef_path is None:
-            # Get the directory where this script is located
-            # Go up to processor directory and into model subdirectory
-            model_dir = script_dir.parent / "inference" / "model"
-            self.hef_path = str(model_dir / "yolov8n.hef")
+        model_dir = script_dir.parent / "inference" / "model"
+        self.hef_path = str(model_dir / model)
         
         # Verify the model file exists
         if not os.path.exists(self.hef_path):

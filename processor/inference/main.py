@@ -264,7 +264,11 @@ def callback(element, buffer, data):
 def main():
     logger.info("Starting Detection Simple App.")
 
-    app = SCMPipeline(callback, SCM())
+    # Initialize SCM data
+    data = SCM()
+
+    # Create and run SCM pipeline
+    app = SCMPipeline(callback, data, data.config["cameras"], model=data.config["model"])
     app.run()
 
 if __name__ == "__main__":

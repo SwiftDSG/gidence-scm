@@ -1,11 +1,5 @@
 {
-  "model": "./inference/model/scm.hef",
-  "camera": [
-    {
-      "id": "cam_0",
-      "name": "Front Door",
-      "url": "rtsp://username:password@192.168.50.64:554/stream1"
-    }
-  ],
+  "model": "yolov8n.hef",
+  "camera": [],
   "udp": null
 }
