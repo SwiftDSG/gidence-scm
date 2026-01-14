@@ -118,38 +118,72 @@ class SCMPipeline(GStreamerApp):
 
         tappas_post_process_dir = os.environ.get(TAPPAS_POSTPROC_PATH_KEY, '')
         set_stream_id_so = os.path.join(tappas_post_process_dir, TAPPAS_STREAM_ID_TOOL_SO_FILENAME)
-        for i, src in enumerate(self.video_sources):
-            sources_string += SOURCE_PIPELINE(
-                video_source=src,
+
+        if len(self.video_sources) > 1:
+            for i, src in enumerate(self.video_sources):
+                sources_string += SOURCE_PIPELINE(
+                    video_source=src,
+                    video_width=self.video_width,
+                    video_height=self.video_height,
+                    frame_rate=self.frame_rate,
+                    sync=self.sync,
+                    no_webcam_compression=True,
+                )
+                id = self.cameras[i]["id"] if i < len(self.cameras) else f"input"
+                sources_string += f"! hailofilter name=set_src_{id} so-path={set_stream_id_so} config-path=src_{id} "
+                sources_string += f"! {QUEUE(name=f'src_q_{id}', max_size_buffers=30)} ! robin.sink_{id} "
+                router_string += f"router.src_{id} ! {USER_CALLBACK_PIPELINE(name=f'src_{id}_callback')} ! {QUEUE(name=f'callback_q_{id}', max_size_buffers=30)} ! {DISPLAY_PIPELINE(video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps, name=f'hailo_display_{id}')} "
+
+            detection_pipeline = INFERENCE_PIPELINE(
+                hef_path=self.hef_path,
+                post_process_so=self.post_process_so,
+                post_function_name=self.post_process_function,
+                batch_size=self.batch_size,
+                config_json=self.labels_json,
+                additional_params=self.thresholds_str,
+            )
+            tracker_pipeline = TRACKER_PIPELINE(class_id = 0)
+            user_callback_pipeline = USER_CALLBACK_PIPELINE()
+
+            inference_string = f"hailoroundrobin mode=1 name=robin ! {detection_pipeline} ! {tracker_pipeline} ! {user_callback_pipeline} ! {QUEUE(name='call_q', max_size_buffers=30)} ! hailostreamrouter name=router "
+
+            for i, _ in enumerate(self.video_sources):
+                inference_string += f"src_{i}::input-streams=\"<sink_{i}>\" "
+
+            pipeline_string = sources_string + inference_string + router_string
+
+            hailo_logger.info(f"Pipeline string: {pipeline_string}")
+            return pipeline_string
+        else:
+            source_pipeline = SOURCE_PIPELINE(
+                video_source=self.video_sources[0],
                 video_width=self.video_width,
                 video_height=self.video_height,
                 frame_rate=self.frame_rate,
                 sync=self.sync,
                 no_webcam_compression=True,
             )
-            id = self.cameras[i]["id"] if i < len(self.cameras) else f"input"
-            sources_string += f"! hailofilter name=set_src_{id} so-path={set_stream_id_so} config-path=src_{id} "
-            sources_string += f"! {QUEUE(name=f'src_q_{id}', max_size_buffers=30)} ! robin.sink_{id} "
-            router_string += f"router.src_{id} ! {USER_CALLBACK_PIPELINE(name=f'src_{id}_callback')} ! {QUEUE(name=f'callback_q_{id}', max_size_buffers=30)} ! {DISPLAY_PIPELINE(video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps, name=f'hailo_display_{id}')} "
 
-        detection_pipeline = INFERENCE_PIPELINE(
-            hef_path=self.hef_path,
-            post_process_so=self.post_process_so,
-            post_function_name=self.post_process_function,
-            batch_size=self.batch_size,
-            config_json=self.labels_json,
-            additional_params=self.thresholds_str,
-        )
-        tracker_pipeline = TRACKER_PIPELINE(class_id = 0)
-        user_callback_pipeline = USER_CALLBACK_PIPELINE()
-        # display_pipeline = DISPLAY_PIPELINE(video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps)
+            detection_pipeline = INFERENCE_PIPELINE(
+                hef_path=self.hef_path,
+                post_process_so=self.post_process_so,
+                post_function_name=self.post_process_function,
+                batch_size=self.batch_size,
+                config_json=self.labels_json,
+                additional_params=self.thresholds_str,
+            )
+            tracker_pipeline = TRACKER_PIPELINE(class_id = 0)
+            user_callback_pipeline = USER_CALLBACK_PIPELINE()
+            display_pipeline = DISPLAY_PIPELINE(
+                video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps
+            )
 
-        inference_string = f"hailoroundrobin mode=1 name=robin ! {detection_pipeline} ! {tracker_pipeline} ! {user_callback_pipeline} ! {QUEUE(name='call_q', max_size_buffers=30)} ! hailostreamrouter name=router "
-
-        for i, _ in enumerate(self.video_sources):
-            inference_string += f"src_{i}::input-streams=\"<sink_{i}>\" "
-
-        pipeline_string = sources_string + inference_string + router_string
-
-        hailo_logger.info(f"Pipeline string: {pipeline_string}")
-        return pipeline_string
+            pipeline_string = (
+                f"{source_pipeline} ! "
+                f"{detection_pipeline} ! "
+                f"{tracker_pipeline} ! "
+                f"{user_callback_pipeline} ! "
+                f"{display_pipeline}"
+            )
+            hailo_logger.info(f"Pipeline string: {pipeline_string}")
+            return pipeline_string
