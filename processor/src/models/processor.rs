@@ -4,7 +4,10 @@ use std::{
 };
 
 use get_if_addrs::get_if_addrs;
-use reqwest::Client;
+use reqwest::{
+    Client,
+    multipart::{Form, Part},
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,18 +17,11 @@ pub struct Processor {
     pub name: String,
     pub model: String,
     pub address: ProcessorAddress,
-    pub camera: Vec<ProcessorCamera>,
     pub webhook: Vec<ProcessorWebhook>,
-    pub udp: Option<ProcessorUdp>,
     pub version: String,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProcessorAddress {
-    pub host: [u8; 4],
-    pub port: u16,
-}
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ProcessorUdp {
     pub host: [u8; 4],
     pub port: u16,
 }
@@ -49,20 +45,6 @@ impl ProcessorWebhookHost {
             ProcessorWebhookHost::IPv4(ip) => format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]),
         }
     }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ProcessorCamera {
-    pub id: String,
-    pub address: ProcessorCameraAddress,
-    pub name: String,
-}
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ProcessorCameraAddress {
-    pub host: [u8; 4],
-    pub port: u16,
-    pub path: Option<String>,
-    pub authentication: Option<(String, String)>,
 }
 
 impl Processor {
@@ -90,9 +72,7 @@ impl Processor {
                     name: id,
                     model: "yolov8n.hef".to_string(),
                     address: ProcessorAddress { host, port: 8000 },
-                    camera: vec![],
                     webhook: vec![],
-                    udp: None,
                     version: Uuid::new_v4().to_string(),
                 };
 
@@ -126,6 +106,28 @@ impl ProcessorWebhook {
         }
 
         format!("{}/{}", url, self.path.trim_start_matches('/'))
+    }
+
+    // Send multipart/form-data with text and file
+    pub async fn send(&self, text: String, file: Vec<u8>) -> bool {
+        let address = self.to_string();
+
+        let file = Part::bytes(file).file_name("image.jpg");
+
+        let client = Client::new();
+        let form = Form::new().text("payload", text).part("image", file);
+        let response = match client.post(&address).multipart(form).send().await {
+            Ok(response) => response,
+            Err(_) => {
+                return false;
+            }
+        };
+
+        if response.status().is_success() {
+            true
+        } else {
+            false
+        }
     }
     pub async fn ping(&self) -> bool {
         let address = self.to_string();

@@ -2,6 +2,7 @@ hailo-apps
 x
 optense
 annotator/input
+annotator/input*
 annotator/output
 
 # Main runtime build artifacts

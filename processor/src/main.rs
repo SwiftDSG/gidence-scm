@@ -1,14 +1,21 @@
+use chrono::Local;
 use models::processor::Processor;
 use serde_json::from_slice;
-use std::process::{Command, Stdio};
+use std::{
+    collections::{HashMap, VecDeque},
+    process::{Command, Stdio},
+    sync::Arc,
+};
 use tokio::{
     fs,
     io::AsyncReadExt,
     net::UnixListener,
+    sync::RwLock,
     time::{Duration, sleep},
 };
+use uuid::Uuid;
 
-use crate::models::evidence::Evidence;
+use crate::models::{Device, Reading, camera::Camera, evidence::Evidence};
 
 mod models;
 
@@ -16,23 +23,39 @@ mod models;
 async fn main() {
     println!("=== SCM Processor Starting ===\n");
 
-    // Load processor configuration
-    let processor = Processor::load();
-    println!("Processor Configuration:");
-    println!("  ID: {}", processor.id);
-    println!("  Name: {}", processor.name);
-    println!("  Model: {}", processor.model);
-    println!("  Cameras: {}", processor.camera.len());
-    if let Some(udp) = &processor.udp {
-        println!(
-            "  UDP: {}.{}.{}.{}:{}",
-            udp.host[0], udp.host[1], udp.host[2], udp.host[3], udp.port
-        );
-    }
-
-    // TODO: Add UDP receiver here to listen for violations from Python
+    // Set up UDS listener
     let _ = fs::remove_file("/tmp/gidence-scm_uds.sock").await;
     let listener = UnixListener::bind("/tmp/gidence-scm_uds.sock").unwrap();
+
+    let timestamp = Local::now().timestamp_millis();
+
+    // Shared state across threads
+    let violation = HashMap::<String, Evidence>::new(); // camera_id+person_id -> Evidence
+    let queue = VecDeque::<Evidence>::new();
+    let mut reading = Reading {
+        camera: HashMap::new(),
+    };
+    let mut device = Device {
+        processor: Processor::load(),
+        camera: HashMap::new(),
+    };
+
+    let mut cameras_raw = Camera::load();
+    let mut cameras = HashMap::new();
+    for c in cameras_raw.drain(..) {
+        reading.camera.insert(c.id.clone(), (None, timestamp));
+        cameras.insert(c.id.clone(), c);
+    }
+    device.camera = cameras;
+
+    let violation = Arc::new(RwLock::new(violation));
+    let queue = Arc::new(RwLock::new(queue));
+    let reading = Arc::new(RwLock::new(reading));
+    let device = Arc::new(RwLock::new(device));
+
+    // UDS THREAD: UDS listener for receiving Evidence structs
+    let reading_clone = Arc::clone(&reading);
+    let queue_clone = Arc::clone(&queue);
     let _ = tokio::spawn(async move {
         loop {
             let (mut stream, _) = match listener.accept().await {
@@ -51,20 +74,99 @@ async fn main() {
 
             let filled_len = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
 
-            let evidence = match from_slice::<Evidence>(buffer[0..filled_len].as_ref()) {
+            let mut evidence = match from_slice::<Evidence>(buffer[0..filled_len].as_ref()) {
                 Ok(v) => v,
                 Err(e) => {
                     println!("Error parsing JSON: {}", e);
                     continue;
                 }
             };
+            evidence.id = Uuid::new_v4().to_string();
 
-            // TODO: Process the received Evidence struct as needed
-            println!("[UDS] Received Evidence: {:?}", evidence);
+            // Update the reading with the new evidence
+            {
+                let mut queue = queue_clone.write().await;
+                queue.push_back(evidence.clone());
+            }
+            {
+                let mut reading = reading_clone.write().await;
+                if let Some(entry) = reading.camera.get_mut(&evidence.camera_id) {
+                    entry.0 = Some(evidence);
+                    entry.1 = Local::now().timestamp_millis();
+                }
+            }
         }
     });
 
-    // Spawn inference engine thread with auto-restart capability
+    // QUEUE PROCESSOR THREAD: Process evidence from the queue
+    let violation_clone = Arc::clone(&violation);
+    let device_clone = Arc::clone(&device);
+    let queue_clone = Arc::clone(&queue);
+    let _ = tokio::spawn(async move {
+        loop {
+            let evidence = {
+                let mut queue = queue_clone.write().await;
+                queue.pop_front()
+            };
+
+            let evidence = match evidence {
+                Some(e) => e,
+                None => {
+                    sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
+            };
+
+            let mut new_violation = false;
+            for person in evidence.person.iter() {
+                let key = format!("{}-{}", evidence.camera_id, person.id);
+
+                // Check if a violation by this person on this camera already exists
+                if let Some(existing) = {
+                    let violation = violation.read().await;
+                    violation.get(&key).cloned()
+                } {
+                    // Check if the old evidence is older than 10 minutes than the new one
+                    if evidence.timestamp - existing.timestamp < 10 * 60 * 1000 {
+                        // Skip inserting this evidence as it's a duplicate within 10 minutes
+                        continue;
+                    }
+                }
+
+                // Insert or update the violation record
+                new_violation = true;
+                {
+                    let mut violation = violation_clone.write().await;
+                    violation.insert(key, evidence.clone());
+                }
+            }
+
+            // If no new violation detected, skip processing
+            if !new_violation {
+                continue;
+            }
+
+            // Send evidence and captured image via webhook
+            let image = match fs::read(format!("/tmp/{}.jpg", evidence.camera_id)).await {
+                Ok(d) => d,
+                Err(_) => continue,
+            };
+
+            let mut webhook = {
+                let device = device_clone.read().await;
+                device.processor.webhook.clone()
+            };
+
+            for wh in webhook.drain(..) {
+                let payload = serde_json::to_string(&evidence).unwrap();
+                let _ = wh.send(payload, image.clone()).await;
+            }
+
+            sleep(Duration::from_millis(100)).await;
+        }
+    });
+
+    // INFERENCE ENGINE THREAD: Spawn inference engine thread with auto-restart capability
     let _ = tokio::spawn(async move {
         let mut count = 0;
         let delay = Duration::from_secs(5);

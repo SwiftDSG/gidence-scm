@@ -51,6 +51,7 @@ import gi
 import time
 import hailo
 import json
+import cv2
 
 from pathlib import Path
 
@@ -89,31 +90,34 @@ class SCMConfig:
     - UDP settings
     """
 
-    def __init__(self, path: str = None):
+    def __init__(self):
         """
-        Load configuration from JSON file.
-
-        Args:
-            path: Path to processor.json file
-                If None, uses default: processor/processor.json
+        Load configuration from processor.json and camera.json files.
         """
-        if path is None:
-            # Default path: processor/processor.json
-            script_dir = Path(__file__).parent.parent
-            path = script_dir / "processor.json"
+        script_dir = Path(__file__).parent.parent
 
-        path = Path(path)
+        path_processor = script_dir / "processor.json"
+        path_processor = Path(path_processor)
 
-        if not path.exists():
-            logger.error(f"Config file not found: {path}")
-            raise FileNotFoundError(f"Config file not found: {path}")
+        path_camera = script_dir / "camera.json"
+        path_camera = Path(path_camera)
 
-        logger.info(f"Loading config from: {path}")
+        if not path_processor.exists():
+            logger.error(f"Processor file not found: {path_processor}")
+            raise FileNotFoundError(f"Processor file not found: {path_processor}")
 
-        with open(path, 'r') as f:
+        logger.info(f"Loading processor from: {path_processor}")
+        with open(path_processor, 'r') as f:
             config = json.load(f)
             self.model = config.get("model", "yolov8n.hef")
-            self.camera = config.get("camera", [])
+
+        if not path_camera.exists():
+            logger.error(f"Cameras file not found: {path_camera}")
+            self.camera = []
+        else:
+            logger.info(f"Loading cameras from: {path_camera}")
+            with open(path_camera, 'r') as f:
+                self.camera = json.load(f)
 
         logger.info("Configuration loaded successfully")
 
@@ -142,13 +146,13 @@ def callback(element, buffer, data):
     - If body part detected but no PPE → VIOLATION
     - If neither → body part not visible → skip check
     """
-    frame_idx = data.get_count()
-    # logger.debug(f"[{data.camera_id}] Processing frame {frame_idx}")
+    frame_index = data.get_count()
+    # logger.debug(f"[{data.camera_id}] Processing frame {frame_index}")
 
     try:
         # Get the GStreamer buffer
         if buffer is None:
-            logger.warning(f"[{data.camera_id}] Received None buffer at frame={frame_idx}")
+            logger.warning(f"[{data.camera_id}] Received None buffer at frame={frame_index}")
             return
 
         # Get frame information (optional, for visualization)
@@ -167,6 +171,7 @@ def callback(element, buffer, data):
         roi = hailo.get_roi_from_buffer(buffer)
         detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
         camera_id = roi.get_stream_id()
+        frame_id = f"{frame_index:06d}"
 
         # Separate persons from other detections (body parts + PPE)
         persons = []
@@ -201,7 +206,7 @@ def callback(element, buffer, data):
 
         # Skip if no persons detected
         if len(persons) == 0:
-            logger.debug(f"[{camera_id}] No persons detected in frame {frame_idx}")
+            logger.debug(f"[{camera_id}] No persons detected in frame {frame_index}")
             return
 
         # Assign body parts and PPE to each person
@@ -209,29 +214,27 @@ def callback(element, buffer, data):
 
         # Check compliance for all persons
         persons = check_compliance_all_persons(person_assignments)
-
-        # Log results
-        violating = False
-        for person in persons:
-            if len(person.get("violation", [])) > 0:
-                violating = True
-                break
         
-        if violating:
-            # (TODO) Prepare UDS message
-            success = data.uds.send(
-                camera_id=camera_id,
-                frame_id=f"frame_{frame_idx:06d}",
-                timestamp=timestamp,
-                person=persons
-            )
-            if success:
-                logger.info(f"[{camera_id}] Sent violation for frame {frame_idx} via UDP")
-            else:
-                logger.error(f"[{camera_id}] Failed to send violation for frame {frame_idx} via UDP")
-            
-            # (TODO) save frame as evidence image
+        # Send the information via UDS, and let the Main Runtime handle the checking of violations
+        success = data.uds.send(
+            camera_id=camera_id,
+            frame_id=frame_id,
+            timestamp=timestamp,
+            person=persons
+        )
+        if success:
+            # save frame as evidence image with a format ofz: cameraID_frameID_timestamp.jpg
+            evidence_dir = Path("evidence")
+            evidence_dir.mkdir(parents=True, exist_ok=True)
+            evidence_path = evidence_dir / f"{camera_id}_{frame_id}_{timestamp}.jpg"
+            cv2.imwrite(str(evidence_path), frame)
 
+            logger.info(f"[{camera_id}] Sent violation for frame {frame_id} via UDP")
+            logger.info(f"[{camera_id}] Saved evidence image: {evidence_path}")
+
+        else:
+            logger.error(f"[{camera_id}] Failed to send violation for frame {frame_id} via UDP")
+            
         return
 
     except Exception as e:

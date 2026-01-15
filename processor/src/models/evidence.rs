@@ -8,7 +8,7 @@ pub struct Evidence {
     pub camera_id: String,
     pub frame_id: String,
     pub timestamp: i64,
-    pub person: EvidencePerson,
+    pub person: Vec<EvidencePerson>,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EvidencePerson {
