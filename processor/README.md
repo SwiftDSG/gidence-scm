@@ -6,10 +6,10 @@ Real-time PPE compliance monitoring system for Raspberry Pi 5 + Hailo-8.
 
 The processor consists of two components:
 
-| Component | Language | Purpose |
-|-----------|----------|---------|
-| **Inference Engine** | Python | Detection pipeline using GStreamer + Hailo SDK |
-| **Main Runtime** | Rust | Process management, violation handling, webhooks |
+| Component            | Language | Purpose                                          |
+| -------------------- | -------- | ------------------------------------------------ |
+| **Inference Engine** | Python   | Detection pipeline using GStreamer + Hailo SDK   |
+| **Main Runtime**     | Rust     | Process management, violation handling, webhooks |
 
 ## Architecture
 
@@ -27,8 +27,8 @@ UDS (Unix Domain Socket)
     ↓
 Main Runtime (Rust)
     ├─ Receive evidence JSON
-    ├─ Process violations (TODO)
-    └─ Send webhooks (TODO)
+    ├─ Process violations
+    └─ Send webhooks
 ```
 
 ## Directory Structure
@@ -114,10 +114,20 @@ Edit `processor.json` (auto-generated on first run):
 # Run the Main Runtime (spawns Inference Engine automatically)
 ./target/release/processor
 
+# Run in simulation mode (no Hailo hardware required)
+./target/release/processor --simulation
+./target/release/processor -s
+
 # Or run Inference Engine directly for testing
 source setup.sh
 python -m inference.main
 ```
+
+### Command Line Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--simulation` | `-s` | Run with simulator instead of real Inference Engine |
 
 ## Evidence Format
 
@@ -134,10 +144,10 @@ The Inference Engine sends JSON evidence for every frame via UDS:
       "bbox": [100, 150, 200, 350],
       "confidence": 0.95,
       "part": [
-        {"label": "hand", "bbox": [120, 280, 160, 320], "confidence": 0.87}
+        { "label": "hand", "bbox": [120, 280, 160, 320], "confidence": 0.87 }
       ],
       "equipment": [
-        {"label": "hardhat", "bbox": [108, 150, 192, 205], "confidence": 0.89}
+        { "label": "hardhat", "bbox": [108, 150, 192, 205], "confidence": 0.89 }
       ],
       "violation": ["missing_gloves"]
     }
@@ -147,26 +157,28 @@ The Inference Engine sends JSON evidence for every frame via UDS:
 
 ## Violation Types
 
-| Violation | Condition |
-|-----------|-----------|
-| `missing_hardhat` | Head visible, no hardhat |
-| `missing_gloves` | Hand visible, no gloves |
-| `missing_shoes` | Foot visible, no shoes |
-| `missing_facemask` | Face visible, no facemask |
-| `missing_earmuffs` | Ear visible, no earmuffs |
-| `missing_safetyvest` | Person detected, no safetyvest |
-| `improperly_worn_gloves` | Hand AND gloves both visible |
-| `improperly_worn_shoes` | Foot AND shoes both visible |
+| Violation                  | Condition                      |
+| -------------------------- | ------------------------------ |
+| `missing_hardhat`          | Head visible, no hardhat       |
+| `missing_gloves`           | Hand visible, no gloves        |
+| `missing_shoes`            | Foot visible, no shoes         |
+| `missing_facemask`         | Face visible, no facemask      |
+| `missing_earmuffs`         | Ear visible, no earmuffs       |
+| `missing_safetyvest`       | Person detected, no safetyvest |
+| `improperly_worn_gloves`   | Hand AND gloves both visible   |
+| `improperly_worn_shoes`    | Foot AND shoes both visible    |
 | `improperly_worn_facemask` | Face AND facemask both visible |
-| `improperly_worn_earmuffs` | Ear AND earmuffs both visible |
+| `improperly_worn_earmuffs` | Ear AND earmuffs both visible  |
 
 ## Requirements
 
 ### Hardware
+
 - Raspberry Pi 5 (recommended) or x86_64
 - Hailo-8 AI Accelerator (26 TOPS)
 
 ### Software
+
 - HailoRT (install separately from Hailo)
 - GStreamer 1.0
 - Python 3.8+
@@ -204,6 +216,7 @@ nc -lU /tmp/gidence-scm_uds.sock
 ## Deployment
 
 See [DEPLOY.md](DEPLOY.md) for full deployment instructions including:
+
 - Cross-compilation setup
 - Raspberry Pi configuration
 - Systemd service setup

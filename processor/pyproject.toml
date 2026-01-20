@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gidence-scm-processor"
+name = "gidence-scm"
 version = "1.0.0"
 description = "Optense — Safety Compliance Monitoring"
 readme = "README.md"
@@ -33,19 +33,8 @@ dev = [
 ]
 
 [project.scripts]
-# Original detection simple pipeline
 run = "inference.main:main"
-
-# SCM Phase Development Scripts
-scm-phase1 = "inference.scm_pipeline_v1:main"
-scm-phase2 = "inference.scm_pipeline_v2:main"
-scm-phase3 = "inference.scm_pipeline_final:main"
-scm-multicam = "inference.multi_camera_manager:main"
-
-# Convenient aliases
-scm-pose = "inference.scm_pipeline_v1:main"
-scm-dual = "inference.scm_pipeline_v2:main" 
-scm-full = "inference.scm_pipeline_final:main"
+simulate = "simlator.main:main"
 
 [tool.setuptools.packages.find]
 include = ["inference*"]

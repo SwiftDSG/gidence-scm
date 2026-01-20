@@ -1,0 +1,3 @@
+# Place your test images here:
+# - normal.jpg: Frame with no violations (all PPE properly worn)
+# - violation.jpg: Frame with violations (missing PPE)

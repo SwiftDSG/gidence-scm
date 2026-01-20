@@ -267,6 +267,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gidence-scm"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "get_if_addrs",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -792,20 +806,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "535d180e0ecab6268a3e718bb9fd44db66bbbc256257165fc699dadf70d16fe7"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "processor"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "get_if_addrs",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
 ]
 
 [[package]]

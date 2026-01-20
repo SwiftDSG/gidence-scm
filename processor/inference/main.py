@@ -208,6 +208,9 @@ def callback(element, buffer, data):
         if len(persons) == 0:
             logger.debug(f"[{camera_id}] No persons detected in frame {frame_index}")
             return
+        
+        # save frame as evidence image with camera_id
+        cv2.imwrite(f"/tmp/{camera_id}.jpg", frame)
 
         # Assign body parts and PPE to each person
         person_assignments = assign_detections_to_persons(persons, others)
@@ -223,15 +226,7 @@ def callback(element, buffer, data):
             person=persons
         )
         if success:
-            # save frame as evidence image with a format ofz: cameraID_frameID_timestamp.jpg
-            evidence_dir = Path("evidence")
-            evidence_dir.mkdir(parents=True, exist_ok=True)
-            evidence_path = evidence_dir / f"{camera_id}_{frame_id}_{timestamp}.jpg"
-            cv2.imwrite(str(evidence_path), frame)
-
             logger.info(f"[{camera_id}] Sent violation for frame {frame_id} via UDP")
-            logger.info(f"[{camera_id}] Saved evidence image: {evidence_path}")
-
         else:
             logger.error(f"[{camera_id}] Failed to send violation for frame {frame_id} via UDP")
             

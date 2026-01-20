@@ -4,6 +4,7 @@ optense
 annotator/input
 annotator/input*
 annotator/output
+processor/evidence
 
 # Main runtime build artifacts
 processor/target

@@ -3,6 +3,7 @@ use models::processor::Processor;
 use serde_json::from_slice;
 use std::{
     collections::{HashMap, VecDeque},
+    env,
     process::{Command, Stdio},
     sync::Arc,
 };
@@ -21,7 +22,15 @@ mod models;
 
 #[tokio::main]
 async fn main() {
-    println!("=== SCM Processor Starting ===\n");
+    // Parse command line arguments
+    let args: Vec<String> = env::args().collect();
+    let simulation_mode = args.iter().any(|arg| arg == "--simulation" || arg == "-s");
+
+    if simulation_mode {
+        println!("=== SCM Processor Starting (SIMULATION MODE) ===\n");
+    } else {
+        println!("=== SCM Processor Starting ===\n");
+    }
 
     // Set up UDS listener
     let _ = fs::remove_file("/tmp/gidence-scm_uds.sock").await;
@@ -65,7 +74,7 @@ async fn main() {
                     continue;
                 }
             };
-            let mut buffer = vec![0; 1024];
+            let mut buffer = vec![0; 65536];
 
             if let Err(e) = stream.read(&mut buffer).await {
                 println!("Error reading from stream: {}", e);
@@ -73,6 +82,9 @@ async fn main() {
             }
 
             let filled_len = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
+
+            // Print received raw JSON for debugging
+            let raw_json = String::from_utf8_lossy(&buffer[0..filled_len]);
 
             let mut evidence = match from_slice::<Evidence>(buffer[0..filled_len].as_ref()) {
                 Ok(v) => v,
@@ -143,6 +155,10 @@ async fn main() {
 
             // If no new violation detected, skip processing
             if !new_violation {
+                println!(
+                    "[Queue] Duplicate evidence within 10 minutes, skipping: {:?}",
+                    evidence
+                );
                 continue;
             }
 
@@ -157,6 +173,12 @@ async fn main() {
                 device.processor.webhook.clone()
             };
 
+            if webhook.is_empty() {
+                // Log the evidence if no webhook is configured
+                println!("[Webhook] No webhook configured. Evidence: {:?}", evidence);
+                continue;
+            }
+
             for wh in webhook.drain(..) {
                 let payload = serde_json::to_string(&evidence).unwrap();
                 let _ = wh.send(payload, image.clone()).await;
@@ -168,17 +190,29 @@ async fn main() {
 
     // INFERENCE ENGINE THREAD: Spawn inference engine thread with auto-restart capability
     let _ = tokio::spawn(async move {
+        // In simulation mode, just wait indefinitely (run simulator manually in another terminal)
+        if simulation_mode {
+            println!("[Simulation] Waiting for simulator connection...");
+            println!("[Simulation] Run the simulator manually in another terminal:");
+            println!("[Simulation]   cd processor && python -m simulator.main");
+            println!("[Simulation] Press Ctrl+C to stop\n");
+            loop {
+                sleep(Duration::from_secs(3600)).await;
+            }
+        }
+
+        // Normal mode: spawn the real Inference Engine with auto-restart
         let mut count = 0;
         let delay = Duration::from_secs(5);
+
         loop {
             count += 1;
             println!("[Inference Engine] Starting... (attempt #{})", count);
 
             // Spawn the Python inference script with venv activation
-            // Run: bash -c "source setup.sh && python3 inference/main.py"
             let mut child = match Command::new("bash")
                 .arg("-c")
-                .arg("source setup.sh && python3 inference/main.py")
+                .arg("source setup.sh && python3 -m inference.main")
                 .stdout(Stdio::inherit()) // Show Python output
                 .stderr(Stdio::inherit()) // Show Python errors
                 .spawn()

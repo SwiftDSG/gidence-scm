@@ -1,5 +1,5 @@
 [package]
-name = "processor"
+name = "gidence-scm"
 version = "0.1.0"
 edition = "2024"
 
@@ -14,7 +14,7 @@ get_if_addrs = "0.5.3"
 reqwest = { version = "0.12.24", features = ["multipart"] }
 
 [profile.release]
-strip = true        # Strip symbols for smaller binary
+strip = true       # Strip symbols for smaller binary
 lto = true         # Link-time optimization
 codegen-units = 1  # Better optimization (slower compile, faster runtime)
 opt-level = 3      # Maximum optimization
