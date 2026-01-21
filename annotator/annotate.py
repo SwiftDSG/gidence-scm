@@ -10,46 +10,118 @@ This script:
 5. Creates a folder ready to upload to Roboflow
 
 Usage:
-    python annotate.py --models ./model/hardhat.pt ./model/gloves.pt --input ./input --output ./output
-    python annotate.py --models ./model/*.pt --input ./input --output ./output
+    python annotate.py
+    python annotate.py --config ./config.json
 """
 
 import argparse
+import json
 from pathlib import Path
 from ultralytics import YOLO
 import shutil
 import cv2
 
 
-def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_threshold=0.25):
+def get_confidence_for_detection(class_name, box_width, img_width, config):
+    """
+    Get the appropriate confidence threshold for a detection based on its size.
+
+    Args:
+        class_name: Name of the detected class
+        box_width: Width of the bounding box in pixels
+        img_width: Width of the image in pixels
+        config: Configuration dictionary
+
+    Returns:
+        Confidence threshold to apply for this detection
+    """
+    defaults = config.get('defaults', {})
+    default_conf = defaults.get('conf', 0.5)
+
+    model_config = config.get('models', {}).get(class_name, {})
+    base_conf = model_config.get('conf', default_conf)
+
+    size_rules = model_config.get('size_rules', [])
+    if not size_rules:
+        return base_conf
+
+    # Calculate width ratio
+    width_ratio = box_width / img_width
+
+    # Find applicable rule (sorted by max_width_ratio ascending)
+    # Format: [max_width_ratio, confidence]
+    for max_ratio, conf in sorted(size_rules, key=lambda x: x[0]):
+        if width_ratio < max_ratio:
+            return conf
+
+    # No size rule matched, use base confidence
+    return base_conf
+
+
+def get_min_confidence_for_model(class_name, config):
+    """
+    Get the minimum confidence threshold for a model (for initial inference).
+    This ensures we don't filter out small objects prematurely.
+
+    Args:
+        class_name: Name of the class
+        config: Configuration dictionary
+
+    Returns:
+        Minimum confidence threshold to use for inference
+    """
+    defaults = config.get('defaults', {})
+    default_conf = defaults.get('conf', 0.5)
+
+    model_config = config.get('models', {}).get(class_name, {})
+    base_conf = model_config.get('conf', default_conf)
+
+    size_rules = model_config.get('size_rules', [])
+    if not size_rules:
+        return base_conf
+
+    # Return the minimum of base_conf and all size rule confidences
+    # Format: [max_width_ratio, confidence]
+    all_confs = [base_conf] + [rule[1] for rule in size_rules]
+    return min(all_confs)
+
+
+def export_roboflow_annotations(config):
     """
     Run multiple models on images and export Roboflow-compatible annotations.
 
     Args:
-        model_paths: List of paths to trained models (.pt files)
-        image_dir: Directory containing images to annotate
-        output_dir: Where to save Roboflow-ready dataset
-        conf_threshold: Confidence threshold for detections
+        config: Configuration dictionary with all settings
     """
+    models_config = config.get('models', {})
+    image_dir = config.get('input', './input')
+    output_dir = config.get('output', './output')
 
-    # Load all models and create class mapping from filenames
+    if not models_config:
+        print("ERROR: No models specified in config")
+        return None
+
+    # Load all models
     print("Loading models...")
     models = {}  # {class_name: model}
     class_names = {}  # {class_id: class_name}
 
-    for i, model_path in enumerate(model_paths):
-        model_path = Path(model_path)
-        class_name = model_path.stem  # e.g., "hardhat" from "hardhat.pt"
+    for i, (class_name, model_cfg) in enumerate(models_config.items()):
+        model_path = Path(model_cfg.get('path', ''))
 
-        # Handle versioned names like "hardhat_v1.pt" → "hardhat"
-        if "_v" in class_name:
-            class_name = class_name.rsplit("_v", 1)[0]
+        if not model_path.exists():
+            print(f"  WARNING: Model not found: {model_path}")
+            continue
 
-        print(f"  [{i}] {model_path.name} → class '{class_name}'")
+        print(f"  [{i}] {class_name} → {model_path}")
 
         model = YOLO(str(model_path))
         models[class_name] = model
         class_names[i] = class_name
+
+    if not models:
+        print("ERROR: No valid models loaded")
+        return None
 
     print(f"\nLoaded {len(models)} models with classes: {list(models.keys())}")
 
@@ -77,7 +149,7 @@ def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_thresho
 
     if image_count == 0:
         print(f"ERROR: No images found in {image_dir}")
-        return
+        return None
 
     # Process each image
     stats = {
@@ -105,10 +177,13 @@ def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_thresho
         for class_name, model in models.items():
             class_id = class_to_id[class_name]
 
-            # Run inference
+            # Get minimum confidence for this model (to catch small objects)
+            min_conf = get_min_confidence_for_model(class_name, config)
+
+            # Run inference with minimum confidence
             results = model.predict(
                 source=img,
-                conf=conf_threshold,
+                conf=min_conf,
                 iou=0.4,  # NMS IOU threshold
                 verbose=False
             )
@@ -124,6 +199,14 @@ def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_thresho
 
                 # Get bbox in xyxy format
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
+                box_width = x2 - x1
+
+                # Get the appropriate confidence threshold for this detection's size
+                required_conf = get_confidence_for_detection(class_name, box_width, img_width, config)
+
+                # Skip if confidence doesn't meet the size-based threshold
+                if confidence < required_conf:
+                    continue
 
                 # Convert to YOLO format (normalized xywh)
                 x_center = ((x1 + x2) / 2) / img_width
@@ -181,8 +264,8 @@ def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_thresho
             # Draw label
             label = f"{class_name} {conf:.2f}"
             (label_w, label_h), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            cv2.rectangle(annotated_img, (x1, y1 - label_h - 5), (x1 + label_w, y1), color, -1)
-            cv2.putText(annotated_img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            cv2.rectangle(annotated_img, (x1, y2), (x1 + label_w, y2 + label_h + 5), color, -1)
+            cv2.putText(annotated_img, label, (x1, y2 + label_h + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
         # Save annotated preview
         annotated_path = annotated_dir / img_path.name
@@ -225,8 +308,7 @@ def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_thresho
     data_yaml = output_dir / 'data.yaml'
     with open(data_yaml, 'w') as f:
         f.write("# Auto-generated from multi-model predictions\n")
-        f.write(f"# Models: {[str(p) for p in model_paths]}\n")
-        f.write(f"# Confidence threshold: {conf_threshold}\n\n")
+        f.write("# See config.json for model paths and confidence settings\n\n")
         f.write("train: images\n")
         f.write("val: images\n\n")
         f.write(f"nc: {len(class_names)}\n")
@@ -239,23 +321,39 @@ def export_roboflow_annotations(model_paths, image_dir, output_dir, conf_thresho
     return stats
 
 
+def load_config(config_path):
+    """Load configuration from JSON file."""
+    config_path = Path(config_path)
+    if not config_path.exists():
+        print(f"ERROR: Config file not found at {config_path}")
+        return None
+
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    print(f"Loaded config from {config_path}")
+    print(f"  Input:  {config.get('input', './input')}")
+    print(f"  Output: {config.get('output', './output')}")
+    print(f"  Models: {len(config.get('models', []))} configured")
+    print()
+
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description='Multi-model auto annotator for Roboflow')
-    parser.add_argument('--models', nargs='+', required=True,
-                        help='Paths to trained models (.pt files). Class name derived from filename.')
-    parser.add_argument('--input', default='./input', help='Directory containing images')
-    parser.add_argument('--output', default='./output', help='Output directory')
-    parser.add_argument('--conf', type=float, default=0.5, help='Confidence threshold')
+    parser.add_argument('--config', default='./config.json',
+                        help='Path to config JSON file (default: ./config.json)')
 
     args = parser.parse_args()
 
+    # Load configuration
+    config = load_config(args.config)
+    if config is None:
+        return
+
     # Run export
-    stats = export_roboflow_annotations(
-        model_paths=args.models,
-        image_dir=args.input,
-        output_dir=args.output,
-        conf_threshold=args.conf
-    )
+    stats = export_roboflow_annotations(config)
 
     # Evaluation
     if stats:

@@ -26,6 +26,7 @@ annotator/
 │   ├── labels/             # YOLO format annotations
 │   ├── preview/            # Annotated previews
 │   └── data.yaml           # Class mapping
+├── config.json             # Configuration file
 ├── annotate.py             # Multi-model auto annotator
 ├── train.ipynb             # Model Zoo training notebook
 └── README.md               # This file
@@ -41,39 +42,90 @@ Open `train.ipynb` in Jupyter and run the cells to train single-class models:
 - Trains with `single_cls=True` for binary classification
 - Saves models as `{class_name}_v{version}.pt`
 
-### 2. Auto-Labeling (annotate.py)
+### 2. Configure (config.json)
 
-Run multiple models on images to generate annotations:
+Edit `config.json` to set up your auto-labeling run:
 
-```bash
-# Specific models
-python annotate.py --models ./model/hardhat.pt ./model/gloves.pt --input ./input --output ./output
-
-# All models via glob
-python annotate.py --models ./model/*.pt --input ./input --output ./output
-
-# With custom confidence threshold
-python annotate.py --models ./model/*.pt --conf 0.4 --input ./input --output ./output
+```json
+{
+  "input": "./input",
+  "output": "./output",
+  "defaults": {
+    "conf": 0.5
+  },
+  "models": {
+    "hardhat": {
+      "path": "./model/hardhat.pt",
+      "conf": 0.5,
+      "size_rules": [
+        [0.02, 0.25],
+        [0.05, 0.35]
+      ]
+    },
+    "gloves": {
+      "path": "./model/gloves.pt",
+      "conf": 0.4
+    }
+  }
+}
 ```
 
-**Arguments:**
+**Configuration Options:**
 
-| Argument   | Default    | Description                                             |
-| ---------- | ---------- | ------------------------------------------------------- |
-| `--models` | (required) | Paths to model files. Class name derived from filename. |
-| `--input`  | `./input`  | Directory containing images to annotate                 |
-| `--output` | `./output` | Output directory for results                            |
-| `--conf`   | `0.5`      | Confidence threshold for detections                     |
+| Field      | Description                               |
+| ---------- | ----------------------------------------- |
+| `input`    | Directory containing images to annotate   |
+| `output`   | Output directory for results              |
+| `defaults` | Default settings (e.g., `conf` threshold) |
+| `models`   | Per-class model config (see below)        |
 
-**Class Naming:**
+**Model Configuration:**
 
-The class name is derived from the model filename:
+| Field        | Description                              |
+| ------------ | ---------------------------------------- |
+| `path`       | Path to the model file (.pt)             |
+| `conf`       | Confidence threshold (optional)          |
+| `size_rules` | Size-based confidence rules (optional)   |
 
-- `hardhat.pt` → class `hardhat`
-- `hardhat_v1.pt` → class `hardhat` (version suffix stripped)
-- `safetyvest_v2.pt` → class `safetyvest`
+### 3. Size-Based Confidence Rules
 
-### 3. Review & Upload
+For overhead cameras where objects appear smaller at distance, you can set lower confidence thresholds for small detections:
+
+```json
+"hardhat": {
+  "conf": 0.5,
+  "size_rules": [
+    [0.02, 0.25],
+    [0.05, 0.35]
+  ]
+}
+```
+
+Each rule is `[max_width_ratio, confidence]`.
+
+**How it works:**
+
+| Detection Width      | Confidence Required |
+| -------------------- | ------------------- |
+| < 2% of image width  | 0.25 (very small)   |
+| 2-5% of image width  | 0.35 (small)        |
+| > 5% of image width  | 0.50 (base)         |
+
+This helps catch small/distant objects that would otherwise be missed due to model uncertainty at small scales.
+
+### 4. Auto-Labeling (annotate.py)
+
+Run the auto-annotator:
+
+```bash
+# Use default config (./config.json)
+python annotate.py
+
+# Use custom config path
+python annotate.py --config ./my_config.json
+```
+
+### 5. Review & Upload
 
 1. Check `output/preview/` for visual quality
 2. Review and correct annotations in Roboflow
@@ -135,18 +187,21 @@ After running `annotate.py`, check the detection rate:
 1. Collect images
    └── Place in input/
 
-2. Run auto-labeler
-   └── python annotate.py --models ./model/*.pt
+2. Configure
+   └── Edit config.json (models, paths, confidence)
 
-3. Review output
+3. Run auto-labeler
+   └── python annotate.py
+
+4. Review output
    └── Check output/preview/
 
-4. Upload to Roboflow
+5. Upload to Roboflow
    └── Upload images/ and labels/
 
-5. Human review
+6. Human review
    └── Correct annotations in Roboflow
 
-6. Export & train
+7. Export & train
    └── Train deployment model with corrected data
 ```

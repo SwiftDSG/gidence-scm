@@ -1,0 +1,49 @@
+{
+  "input": "./input-50",
+  "output": "./output",
+  "defaults": {
+    "conf": 0.5
+  },
+  "models": {
+    "hardhat": {
+      "path": "./model/hardhat.pt",
+      "conf": 0.8,
+      "size_rules": [
+        [0.02, 0.4],
+        [0.05, 0.65]
+      ]
+    },
+    "facemask": {
+      "path": "./model/facemask.pt",
+      "conf": 0.3
+    },
+    "safetyvest": {
+      "path": "./model/safetyvest.pt",
+      "conf": 0.5
+    },
+    "gloves": {
+      "path": "./model/gloves.pt",
+      "conf": 0.5
+    },
+    "person": {
+      "path": "./model/person.pt",
+      "conf": 0.7,
+      "size_rules": [
+        [0.02, 0.3],
+        [0.05, 0.5]
+      ]
+    },
+    "hand": {
+      "path": "./model/hand.pt",
+      "conf": 0.5
+    },
+    "head": {
+      "path": "./model/head.pt",
+      "conf": 0.5
+    },
+    "face": {
+      "path": "./model/face.pt",
+      "conf": 0.5
+    }
+  }
+}
