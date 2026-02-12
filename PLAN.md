@@ -1,7 +1,7 @@
 # SCM Project Plan
 
-**Goal:** Finish the iOS app with full end-to-end data flow
-**Last updated:** 2026-02-09
+**Goal:** Finish iOS app, processor web interface, and benchmarks
+**Last updated:** 2026-02-12
 
 ---
 
@@ -55,7 +55,7 @@ The subscriber system and APNS dependency exist on the server. The iOS app alrea
 - [x] 3.1 — Server: send APNS push when violation evidence is received
   - Look up subscribers for the relevant cluster
   - Send push via the `a2` crate (already in dependencies)
-- [ ] 3.2 — iOS: handle push notification payload
+- [x] 3.2 — iOS: handle push notification payload
   - Navigate to evidence detail when notification is tapped
   - Parse the notification payload into evidence data
 - [ ] 3.3 — Test push notification end-to-end
@@ -63,16 +63,44 @@ The subscriber system and APNS dependency exist on the server. The iOS app alrea
 
 ---
 
-## Phase 4: Polish & Documentation
+## Phase 4: Processor Web Interface
 
-- [ ] 4.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
-- [ ] 4.2 — Error handling audit: silent failures in iOS managers
-- [ ] 4.3 — Portfolio documentation
-- [ ] 4.4 — Performance benchmarks
-- [ ] 4.5 — Demo video
+Nuxt.js dashboard running locally on the Raspberry Pi. Sidebar handles processor info editing and camera CRUD. Home page is a monitoring view.
+
+- [ ] 4.1 — Camera CRUD in sidebar
+  - Add camera: form with name, RTSP URL
+  - Edit camera: update name, RTSP URL
+  - Delete camera: with confirmation
+  - Wire to existing server API (`POST/PUT/DELETE /cameras`)
+- [ ] 4.2 — Home page: camera monitoring grid
+  - Grid of camera cards, each showing:
+    - Camera name + online/offline indicator
+    - Latest captured frame (thumbnail)
+    - Violation count badge (last hour or today)
+  - Click a camera card → opens sidebar menu with that camera's recent evidence feed
+- [ ] 4.3 — Evidence feed per camera
+  - Show list of recent evidences for the selected camera
+  - Each evidence shows: frame thumbnail, timestamp, violation count
+  - Basic violation summary (which violations were detected)
+
+---
+
+## Phase 5: Benchmarks & Polish
+
+- [x] 5.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
+- [x] 5.2 — Error handling audit: silent failures in iOS managers
+  - Added generic `req<T>` and `status` helpers on Network to centralize error handling
+  - Refactored all managers to use the new helpers
+  - Fixed double-callback bug in NotificationManager (subscribe/refresh)
+  - Fixed Bool vs Bool? type mismatch in delete/unsubscribe callbacks
+- [ ] 5.3 — Test push notification end-to-end
+  - Simulator → server → APNS → iOS device
+- [ ] 5.4 — Performance benchmarks
+- [ ] 5.5 — Portfolio documentation
+- [ ] 5.6 — Demo video
 
 ---
 
 ## Current Status
 
-**Next action:** Start with Phase 1.1 — verify the existing evidence endpoint matches what the processor webhook sends.
+**Next action:** Phase 4.1 — Camera CRUD in the processor web sidebar.

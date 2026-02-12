@@ -140,7 +140,6 @@ impl ViewCluster {
         match collection.aggregate(pipeline, None).await {
             Ok(mut cursor) => {
                 if let Some(Ok(doc)) = cursor.next().await {
-                    println!("DOC: {:#?}", doc);
                     let cluster = from_document::<Self>(doc).unwrap();
                     Ok(cluster)
                 } else {

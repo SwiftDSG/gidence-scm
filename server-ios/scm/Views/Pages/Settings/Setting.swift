@@ -109,7 +109,7 @@ struct Setting: View {
                         self.notificationManager.requesting = true
                     } else if !self.toggleState && permitted {
                         self.notificationManager.unsubscribe(self.network) { success, _ in
-                            if let success, success {
+                            if success {
                                 self.notificationManager.reject()
                             }
                         }

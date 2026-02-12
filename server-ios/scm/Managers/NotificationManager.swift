@@ -137,59 +137,27 @@ class NotificationManager {
             return
         }
         
-        network.req(path, method: .post, data: data) { (data, response, error) in
-            if let error {
-                print("Error: ", error)
-                f(nil, error)
+        network.req(path, method: .post, data: data) { (d: NotificationSubscriber?, e: Error?) in
+            if let d {
+                self.device = d.id
+                f(true, e)
                 return
             }
-            if let response = response as? HTTPURLResponse, let data {
-                print("Response: ", response)
-                if response.statusCode == 201 {
-                    guard let decoded = try? JSONDecoder().decode(NotificationSubscriber.self, from: data) else {
-                        f(false, nil)
-                        return
-                    }
-                    
-                    self.device = decoded.id
-                    
-                    f(true, nil)
-                } else {
-                    f(false, nil)
-                }
-            } else {
-                f(nil, "REQUEST_FAILED" as? Error)
-            }
+            f(false, e)
         }
     }
     
-    func unsubscribe(_ network: Network, f: @escaping ((Bool?, Error?) -> Void)) -> Void {
+    func unsubscribe(_ network: Network, f: @escaping ((Bool, Error?) -> Void)) -> Void {
         let defaults = UserDefaults.standard
         
         guard let token = defaults.string(forKey: "token") else {
-            f(nil, "INVALID_TOKEN" as? Error)
+            f(false, "INVALID_TOKEN" as? Error)
             return
         }
         
         let path = "/subscribers?kind=apple&token=\(token)"
         
-        network.req(path, method: .delete) { (data, response, error) in
-            if let error {
-                print("Error: ", error)
-                f(nil, error)
-                return
-            }
-            if let response = response as? HTTPURLResponse {
-                print("Response: ", response)
-                if response.statusCode == 204 {
-                    f(true, nil)
-                } else {
-                    f(false, nil)
-                }
-            } else {
-                f(nil, "REQUEST_FAILED" as? Error)
-            }
-        }
+        network.status(path, method: .delete, f: f) 
     }
     
     private func refresh(_ network: Network, subscriber_id: String, f: @escaping ((Bool?, Error?) -> Void)) -> Void {
@@ -217,29 +185,13 @@ class NotificationManager {
             return
         }
         
-        network.req(path, method: .put, data: data) { (data, response, error) in
-            if let error {
-                print("Error: ", error)
-                f(nil, error)
+        network.req(path, method: .put, data: data) { (d: NotificationSubscriber?, e: Error?) in
+            if let d {
+                self.device = d.id
+                f(true, e)
                 return
             }
-            if let response = response as? HTTPURLResponse, let data {
-                print("Response: ", response)
-                if response.statusCode == 201 {
-                    guard let decoded = try? JSONDecoder().decode(NotificationSubscriber.self, from: data) else {
-                        f(false, nil)
-                        return
-                    }
-                    
-                    self.device = decoded.id
-                    
-                    f(true, nil)
-                } else {
-                    f(false, nil)
-                }
-            } else {
-                f(nil, "REQUEST_FAILED" as? Error)
-            }
+            f(false, e)
         }
     }
 

@@ -63,7 +63,54 @@ class Network {
         }
     }
     
-    func req(_ path: String, method: NetworkRequestMethod, data: Data? = nil, type: String = "application/json", f: @escaping (Data?, URLResponse?, Error?) -> Void) -> Void {
+    func req<T: Decodable>(
+        _ path: String,
+        method: NetworkRequestMethod,
+        data: Data? = nil,
+        type: String = "application/json",
+        f: @escaping (T?, Error?) -> Void
+    ) {
+        self.r(path, method: method, data: data, type: type) { data, response, error in
+            if let error {
+                f(nil, error)
+                return
+            }
+            
+            guard let response = response as? HTTPURLResponse, let data else {
+                f(nil, nil)
+                return
+            }
+            
+            guard response.statusCode >= 200 && response.statusCode < 300 else {
+                f(nil, nil)
+                return
+            }
+            
+            DispatchQueue.main.async {
+                do {
+                    let decoded = try JSONDecoder().decode(T.self, from: data)
+                    f(decoded, nil)
+                } catch let error {
+                    f(nil, error)
+                }
+            }
+        }
+    }
+    func status(
+        _ path: String,
+        method: NetworkRequestMethod,
+        data: Data? = nil,
+        f: @escaping (Bool, Error?) -> Void
+    ) {
+        self.r(path, method: method, data: data) { _, response, error in
+            if let response = response as? HTTPURLResponse, error == nil {
+                f(response.statusCode >= 200 && response.statusCode < 300, nil)
+            } else {
+                f(false, error)
+            }
+        }
+    }
+    private func r(_ path: String, method: NetworkRequestMethod, data: Data? = nil, type: String = "application/json", f: @escaping (Data?, URLResponse?, Error?) -> Void) -> Void {
         if let url = URL(string: "http\(API_BASE)\(path)") {
             var request = URLRequest(url: url)
             

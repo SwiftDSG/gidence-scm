@@ -220,7 +220,7 @@ struct ContentView: View {
                         reject: {
                             self.notificationManager.requesting = false
                             self.notificationManager.unsubscribe(self.network) { success, _ in
-                                if let success, success {
+                                if success {
                                     self.notificationManager.reject()
                                 }
                             }
