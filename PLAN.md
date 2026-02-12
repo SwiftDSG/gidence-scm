@@ -52,7 +52,7 @@ With data flowing, build out the remaining screens.
 
 The subscriber system and APNS dependency exist on the server. The iOS app already handles notification permissions and token registration. Just need to trigger the actual push.
 
-- [ ] 3.1 — Server: send APNS push when violation evidence is received
+- [x] 3.1 — Server: send APNS push when violation evidence is received
   - Look up subscribers for the relevant cluster
   - Send push via the `a2` crate (already in dependencies)
 - [ ] 3.2 — iOS: handle push notification payload

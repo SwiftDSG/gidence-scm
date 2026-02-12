@@ -83,6 +83,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let userInfo = response.notification.request.content.userInfo
         print("User info \(userInfo)")
         
+        if let id = userInfo["evidence_id"] as? String {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenEvidence"),
+                object: nil,
+                userInfo: ["evidence_id": id]
+            )
+        }
+        
         // Always call the completion handler when done.
         completionHandler()
     }

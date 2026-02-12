@@ -49,4 +49,29 @@ import SwiftUI
             }
         }
     }
+    func get(_ network: Network, _ id: String, f: @escaping ((ViewEvidence?, Error?) -> Void)) -> Void {
+        var path = "/evidences/\(id)"
+        
+        network.req(path, method: .get) { (data, response, error) in
+            if let error {
+                print("Error: ", error)
+                f(nil, error)
+                return
+            }
+            if let response {
+                print("Response: ", response)
+            }
+            if let data {
+                DispatchQueue.main.async {
+                    do {
+                        let decoded = try JSONDecoder().decode(ViewEvidence.self, from: data)
+                        f(decoded, nil)
+                    } catch let error {
+                        print("Error: ", error)
+                        f(nil, error)
+                    }
+                }
+            }
+        }
+    }
 }

@@ -1,11 +1,14 @@
 use std::{
     collections::{HashMap, VecDeque},
-    fs::read_to_string,
-    io,
+    fs::{File, read_to_string},
+    io::{self, Seek, SeekFrom},
     sync::Arc,
     time::Duration,
 };
 
+use a2::{
+    Client, ClientConfig, DefaultNotificationBuilder, NotificationBuilder, NotificationOptions,
+};
 use actix::{Addr, Recipient};
 use actix_cors::Cors;
 use actix_files::Files;
@@ -20,7 +23,11 @@ use central::{CentralWebSocket, CentralWebSocketMessage};
 use models::user::{User, UserAuthenticationMiddlewareFactory, UserRole, load_keys};
 use uuid::Uuid;
 
-use crate::models::{cluster::Cluster, evidence::Evidence, subscriber::Subscriber};
+use crate::models::{
+    evidence::Evidence,
+    processor::Processor,
+    subscriber::{Subscriber, SubscriberKind},
+};
 
 mod central;
 mod database;
@@ -162,7 +169,6 @@ async fn main() -> io::Result<()> {
 
     let database_clone = database.clone();
     let evidence_clone = evidence.clone();
-    let client_clone = client.clone();
     let _ = tokio::spawn(async move {
         let mut file = File::open("keys/apns.p8").expect("APNS_NOT_FOUND");
 
@@ -176,6 +182,8 @@ async fn main() -> io::Result<()> {
             ClientConfig::new(a2::Endpoint::Sandbox),
         )
         .expect("TOKEN_CREATION_FAILED");
+
+        let mut counter = 0;
 
         loop {
             let evidence = {
@@ -197,7 +205,7 @@ async fn main() -> io::Result<()> {
 
             for user in users.drain(..) {
                 let mut subscribers =
-                    match Subscriber::find_many_by_user_id(&user._id, &database_clone).await {
+                    match Subscriber::find_many_by_user_id(&user.id, &database_clone).await {
                         Ok(v) => v,
                         _ => continue,
                     };
@@ -210,10 +218,15 @@ async fn main() -> io::Result<()> {
                                 ..Default::default()
                             };
 
-                            let title =
-                                format!("Terjadi {} Pelanggaran Baru!", violation.uniform.len());
+                            let violation_count = evidence
+                                .person
+                                .iter()
+                                .map(|p| p.violation.len())
+                                .sum::<usize>();
+
+                            let title = format!("Terjadi {} Pelanggaran Baru!", violation_count);
                             let subtitle = match Processor::find_by_id(
-                                &violation.processor_id,
+                                &evidence.processor_id,
                                 &database_clone,
                             )
                             .await
@@ -225,9 +238,13 @@ async fn main() -> io::Result<()> {
                             let builder = DefaultNotificationBuilder::new()
                                 .set_title(&title)
                                 .set_subtitle(&subtitle)
+                                .set_content_available()
                                 .set_sound("ping.flac");
 
-                            let payload = builder.build(token, options);
+                            let mut payload = builder.build(token, options);
+                            payload
+                                .add_custom_data("evidence_id", &evidence.id)
+                                .unwrap();
 
                             if let Err(err) = apns.send(payload).await {
                                 println!("SENDING FAILED: {:#?}", err);
@@ -245,12 +262,11 @@ async fn main() -> io::Result<()> {
                 }
             }
 
-            drop(violation);
-
             counter += 1;
-            sleep(Duration::from_secs(5)).await;
+            sleep(Duration::from_secs(1)).await;
 
             if counter >= 240 {
+                file.seek(SeekFrom::Start(0)).expect("APNS_KEY_SEEK_FAILED");
                 apns = Client::token(
                     &mut file,
                     key_id.clone(),
@@ -273,6 +289,7 @@ async fn main() -> io::Result<()> {
             .wrap(cors)
             .app_data(web::Data::new(database.clone()))
             .app_data(web::Data::new(processor.clone()))
+            .app_data(web::Data::new(evidence.clone()))
             .app_data(web::Data::new(client.clone()))
             .service(
                 web::scope(&std::env::var("BASE_PATH").unwrap())
@@ -307,6 +324,7 @@ async fn main() -> io::Result<()> {
                     .service(
                         scope("/evidences")
                             .service(routes::evidence::create_evidence)
+                            .service(routes::evidence::get_evidence)
                             .service(routes::evidence::get_evidences),
                     )
                     .service(scope("/cameras").service(routes::camera::get_cameras))

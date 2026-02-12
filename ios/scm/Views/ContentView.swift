@@ -347,6 +347,16 @@ struct ContentView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenEvidence"))) { notification in
+            if let id = notification.userInfo?["evidence_id"] as? String {
+                // Fetch evidence by ID, then navigate
+                self.evidenceManager.get(self.network, id) { evidence, err in
+                    if let evidence {
+                        self.app.path.append(PageKind.EvidenceDetail(evidence))
+                    }
+                }
+            }
+        }
     }
     
     private func connect() {

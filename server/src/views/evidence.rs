@@ -128,6 +128,36 @@ impl ViewEvidence {
             }
         }
     }
+    pub async fn find_by_id(id: &String, db: &Database) -> Result<Self, EventKind> {
+        let collection = db.collection::<Self>(COLLECTION);
+
+        let evidence_query = vec![doc! {
+            "$eq": ["$id", &id]
+        }];
+
+        let pipeline = vec![
+            Self::create_match_stage(&evidence_query),
+            Self::create_cluster_lookup_stage(),
+            Self::create_processor_lookup_stage(),
+            Self::create_camera_lookup_stage(),
+            Self::create_project_stage(),
+        ];
+
+        match collection.aggregate(pipeline, None).await {
+            Ok(mut cursor) => {
+                if let Some(Ok(doc)) = cursor.next().await {
+                    let evidence = from_document::<Self>(doc).unwrap();
+                    Ok(evidence)
+                } else {
+                    Err(EventKind::NotFound)
+                }
+            }
+            Err(e) => {
+                println!("ERROR: {:?}", e);
+                Err(EventKind::FindingFailed)
+            }
+        }
+    }
 
     // Helper functions to create aggregation stages
     fn create_match_stage(query: &Vec<Document>) -> Document {

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     fs::{self, File},
     io::Write,
     sync::Arc,
@@ -28,6 +28,9 @@ pub async fn create_evidence(
     processor_id: web::Path<String>,
     mut payload: Multipart,
     db: web::Data<Database>,
+
+    // In-memory evidence queue for notification distribution
+    queue: web::Data<Arc<RwLock<VecDeque<Evidence>>>>,
 
     // Websocket client
     client: web::Data<
@@ -124,13 +127,18 @@ pub async fn create_evidence(
         Ok(_) => {
             // Notify all connected clients about new evidence
             let payload = serde_json::to_string(&CentralWebSocketResponse::Evidence(
-                ViewEvidence::from(evidence, db.get_ref()).await,
+                ViewEvidence::from(evidence.clone(), db.get_ref()).await,
             ))
             .unwrap();
 
             let client = client.read().await;
             for (_, (_, client)) in (*client).iter() {
                 client.do_send(CentralWebSocketMessage(payload.clone()));
+            }
+
+            {
+                let mut evidence_queue = queue.write().await;
+                evidence_queue.push_back(evidence);
             }
 
             HttpResponse::Created().finish()
@@ -149,7 +157,20 @@ pub async fn get_evidences(
     db: web::Data<Database>,
 ) -> HttpResponse {
     match ViewEvidence::find_many(&query, db.get_ref()).await {
-        Ok(violations) => HttpResponse::Ok().json(violations),
+        Ok(evidences) => HttpResponse::Ok().json(evidences),
+        Err(_) => HttpResponse::NotFound().body("NOT_FOUND"),
+    }
+}
+
+#[get("/{evidence_id}")]
+pub async fn get_evidence(evidence_id: web::Path<String>, db: web::Data<Database>) -> HttpResponse {
+    let evidence_id = match evidence_id.parse() {
+        Ok(v) => v,
+        _ => return HttpResponse::BadRequest().body("INVALID_ID"),
+    };
+
+    match ViewEvidence::find_by_id(&evidence_id, db.get_ref()).await {
+        Ok(evidence) => HttpResponse::Ok().json(evidence),
         Err(_) => HttpResponse::NotFound().body("NOT_FOUND"),
     }
 }
