@@ -1,0 +1,22 @@
+[Unit]
+Description=Gidence UICS Controller Web Service
+After=network.target gidence-uics-controller.service
+Wants=network.target
+Requires=gidence-uics-controller.service
+
+[Service]
+Type=exec
+User=gidence
+WorkingDirectory=/home/gidence/gidence-uics/controller-web
+ExecStart=/home/gidence/gidence-uics/controller-web/start.sh
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=DISPLAY=:0
+Environment=PATH=/home/gidence/.nvm/versions/node/v24.11.0/bin:/usr/local/bin:/usr/bin:/bin
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

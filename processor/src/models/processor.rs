@@ -1,8 +1,10 @@
 use std::{
     fs::{read_to_string, write},
     net::IpAddr,
+    os::macos::raw::stat,
 };
 
+use chrono::Local;
 use get_if_addrs::get_if_addrs;
 use reqwest::{
     Client,
@@ -17,8 +19,8 @@ pub struct Processor {
     pub name: String,
     pub model: String,
     pub address: ProcessorAddress,
-    pub webhook: Vec<ProcessorWebhook>,
-    pub version: String,
+    pub webhook: Option<ProcessorWebhook>,
+    pub version: i64,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProcessorAddress {
@@ -29,8 +31,8 @@ pub struct ProcessorAddress {
 pub struct ProcessorWebhook {
     pub host: ProcessorWebhookHost,
     pub port: Option<u16>,
-    pub path: String,
     pub secure: bool,
+    pub path: ProcessorWebhookPath,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
@@ -45,6 +47,11 @@ impl ProcessorWebhookHost {
             ProcessorWebhookHost::IPv4(ip) => format!("{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3]),
         }
     }
+}
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ProcessorWebhookPath {
+    pub evidence: String,
+    pub update: String,
 }
 
 impl Processor {
@@ -72,8 +79,8 @@ impl Processor {
                     name: id,
                     model: "yolov8n.hef".to_string(),
                     address: ProcessorAddress { host, port: 8000 },
-                    webhook: vec![],
-                    version: Uuid::new_v4().to_string(),
+                    webhook: None,
+                    version: Local::now().timestamp_millis(),
                 };
 
                 write("processor.json", serde_json::to_string(&processor).unwrap()).unwrap();
@@ -88,13 +95,14 @@ impl Processor {
         write("processor.json", serde_json::to_string(self).unwrap()).unwrap();
     }
     pub fn update_version(&mut self) {
-        self.version = Uuid::new_v4().to_string();
+        self.version = Local::now().timestamp_millis();
         self.update();
     }
 }
 
 impl ProcessorWebhook {
-    fn to_string(&self) -> String {
+    // Send multipart/form-data with text and file
+    pub async fn send_evidence(&self, text: String, file: Vec<u8>, evidence_id: &String) -> bool {
         let mut url = format!(
             "{}://{}",
             if self.secure { "https" } else { "http" },
@@ -105,45 +113,60 @@ impl ProcessorWebhook {
             url = format!("{}:{}", url, port);
         }
 
-        format!("{}/{}", url, self.path.trim_start_matches('/'))
-    }
+        let address = format!("{}/{}", url, self.path.evidence.trim_start_matches('/'));
 
-    // Send multipart/form-data with text and file
-    pub async fn send(&self, text: String, file: Vec<u8>) -> bool {
-        let address = self.to_string();
+        let file = Part::bytes(file).file_name(format!("{}.jpg", evidence_id));
 
-        let file = Part::bytes(file).file_name("image.jpg");
+        println!("[WEBHOOK] Sending evidence to {}", address);
 
         let client = Client::new();
-        let form = Form::new().text("payload", text).part("image", file);
-        let response = match client.post(&address).multipart(form).send().await {
-            Ok(response) => response,
-            Err(_) => {
-                return false;
-            }
-        };
+        let form = Form::new().text("data", text).part("image", file);
 
-        if response.status().is_success() {
-            true
-        } else {
-            false
+        match client.post(&address).multipart(form).send().await {
+            Ok(response) => {
+                let status = response.status();
+                println!(
+                    "Webhook response status: {}",
+                    response.text().await.unwrap_or_default()
+                );
+                if status.is_success() { true } else { false }
+            }
+            Err(e) => {
+                println!("Failed to send evidence to webhook: {:?}", e);
+                false
+            }
         }
     }
-    pub async fn ping(&self) -> bool {
-        let address = self.to_string();
+
+    // Send processor's information to the webhook
+    pub async fn send_update(&self, text: String) -> bool {
+        let mut url = format!(
+            "{}://{}",
+            if self.secure { "https" } else { "http" },
+            self.host.to_string()
+        );
+
+        if let Some(port) = self.port {
+            url = format!("{}:{}", url, port);
+        }
+
+        let address = format!("{}/{}", url, self.path.update.trim_start_matches('/'));
 
         let client = Client::new();
-        let response = match client.get(&address).send().await {
-            Ok(response) => response,
+        match client
+            .post(&address)
+            .header("Content-Type", "application/json")
+            .body(text)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                let status = response.status();
+                if status.is_success() { true } else { false }
+            }
             Err(_) => {
                 return false;
             }
-        };
-
-        if response.status().is_success() {
-            true
-        } else {
-            false
         }
     }
 }

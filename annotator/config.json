@@ -1,13 +1,12 @@
 {
-  "input": "./input-cctv-100",
+  "input": "./input-cctv-250",
   "output": "./output",
   "defaults": {
-    "conf": 0.5
+    "conf": 0.7
   },
   "models": {
     "safetyvest": {
-      "path": "./model/safetyvest.pt",
-      "conf": 0.5
+      "path": "./model/safetyvest.pt"
     }
   }
 }

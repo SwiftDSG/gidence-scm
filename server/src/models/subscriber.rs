@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::{
-    bson::{doc, oid::ObjectId, to_bson},
     Database,
+    bson::{doc, to_bson},
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,13 +11,13 @@ const COLLECTION: &str = "subscribers";
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SubscriberRequest {
-    pub user_id: ObjectId,
+    pub user_id: String,
     pub kind: SubscriberKind,
 }
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Subscriber {
-    pub _id: ObjectId,
-    pub user_id: ObjectId,
+    pub id: String,
+    pub user_id: String,
     pub kind: SubscriberKind,
 }
 #[derive(Debug, Deserialize, Serialize)]
@@ -40,7 +40,7 @@ pub enum SubscriberQueryKind {
 impl From<SubscriberRequest> for Subscriber {
     fn from(a: SubscriberRequest) -> Self {
         Self {
-            _id: ObjectId::new(),
+            id: String::new(),
             user_id: a.user_id,
             kind: a.kind,
         }
@@ -62,7 +62,7 @@ impl Subscriber {
 
         if collection
             .update_one(
-                doc! { "_id": self._id },
+                doc! { "id": &self.id },
                 doc! { "$set": to_bson::<Self>(self).unwrap() },
                 None,
             )
@@ -79,7 +79,7 @@ impl Subscriber {
         let collection = db.collection::<Self>(COLLECTION);
 
         if collection
-            .delete_one(doc! { "_id": self._id }, None)
+            .delete_one(doc! { "id": &self.id }, None)
             .await
             .is_ok()
         {
@@ -88,10 +88,10 @@ impl Subscriber {
             Err(EventKind::DeletingFailed)
         }
     }
-    pub async fn find_by_id(_id: &ObjectId, db: &Database) -> Result<Self, EventKind> {
+    pub async fn find_by_id(id: &String, db: &Database) -> Result<Self, EventKind> {
         let collection = db.collection::<Self>(COLLECTION);
 
-        match collection.find_one(doc! { "_id": _id }, None).await {
+        match collection.find_one(doc! { "id": id }, None).await {
             Ok(Some(v)) => Ok(v),
             Ok(_) => Err(EventKind::NotFound),
             Err(e) => {
@@ -118,7 +118,7 @@ impl Subscriber {
         }
     }
     pub async fn find_many_by_user_id(
-        user_id: &ObjectId,
+        user_id: &String,
         db: &Database,
     ) -> Result<Vec<Self>, EventKind> {
         let collection = db.collection::<Self>(COLLECTION);

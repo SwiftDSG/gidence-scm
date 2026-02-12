@@ -1,9 +1,13 @@
+use actix_cors::Cors;
+use actix_files::Files;
+use actix_web::{App, HttpServer, middleware::Logger, web::Data};
 use chrono::Local;
 use models::processor::Processor;
 use serde_json::from_slice;
 use std::{
     collections::{HashMap, VecDeque},
     env,
+    net::SocketAddr,
     process::{Command, Stdio},
     sync::Arc,
 };
@@ -19,6 +23,7 @@ use uuid::Uuid;
 use crate::models::{Device, Reading, camera::Camera, evidence::Evidence};
 
 mod models;
+mod routes;
 
 #[tokio::main]
 async fn main() {
@@ -41,11 +46,13 @@ async fn main() {
     // Shared state across threads
     let violation = HashMap::<String, Evidence>::new(); // camera_id+person_id -> Evidence
     let queue = VecDeque::<Evidence>::new();
+    let processor = Processor::load();
+
     let mut reading = Reading {
         camera: HashMap::new(),
     };
     let mut device = Device {
-        processor: Processor::load(),
+        processor: processor.clone(),
         camera: HashMap::new(),
     };
 
@@ -70,23 +77,18 @@ async fn main() {
             let (mut stream, _) = match listener.accept().await {
                 Ok(conn) => conn,
                 Err(e) => {
-                    eprintln!("[UDS] Failed to accept connection: {}", e);
+                    println!("[UDS] Failed to accept connection: {}", e);
                     continue;
                 }
             };
-            let mut buffer = vec![0; 65536];
+            let mut buffer = vec![];
 
-            if let Err(e) = stream.read(&mut buffer).await {
+            if let Err(e) = stream.read_to_end(&mut buffer).await {
                 println!("Error reading from stream: {}", e);
                 continue;
             }
 
-            let filled_len = buffer.iter().position(|&x| x == 0).unwrap_or(buffer.len());
-
-            // Print received raw JSON for debugging
-            let raw_json = String::from_utf8_lossy(&buffer[0..filled_len]);
-
-            let mut evidence = match from_slice::<Evidence>(buffer[0..filled_len].as_ref()) {
+            let mut evidence = match from_slice::<Evidence>(&buffer) {
                 Ok(v) => v,
                 Err(e) => {
                     println!("Error parsing JSON: {}", e);
@@ -111,8 +113,7 @@ async fn main() {
     });
 
     // QUEUE PROCESSOR THREAD: Process evidence from the queue
-    let violation_clone = Arc::clone(&violation);
-    let device_clone = Arc::clone(&device);
+    let violation_queue = Arc::clone(&violation);
     let queue_clone = Arc::clone(&queue);
     let _ = tokio::spawn(async move {
         loop {
@@ -135,7 +136,7 @@ async fn main() {
 
                 // Check if a violation by this person on this camera already exists
                 if let Some(existing) = {
-                    let violation = violation.read().await;
+                    let violation = violation_queue.read().await;
                     violation.get(&key).cloned()
                 } {
                     // Check if the old evidence is older than 10 minutes than the new one
@@ -146,64 +147,168 @@ async fn main() {
                 }
 
                 // Insert or update the violation record
-                new_violation = true;
-                {
-                    let mut violation = violation_clone.write().await;
-                    violation.insert(key, evidence.clone());
+                if person.violation.len() > 0 {
+                    new_violation = true;
+                    {
+                        let mut violation = violation_queue.write().await;
+                        violation.insert(key, evidence.clone());
+                    }
                 }
             }
 
             // If no new violation detected, skip processing
-            if !new_violation {
-                println!(
-                    "[Queue] Duplicate evidence within 10 minutes, skipping: {:?}",
-                    evidence
-                );
-                continue;
-            }
+            if new_violation {
+                let image = match fs::read(format!("/tmp/{}.jpg", evidence.camera_id)).await {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                };
 
-            // Send evidence and captured image via webhook
-            let image = match fs::read(format!("/tmp/{}.jpg", evidence.camera_id)).await {
-                Ok(d) => d,
-                Err(_) => continue,
-            };
-
-            let mut webhook = {
-                let device = device_clone.read().await;
-                device.processor.webhook.clone()
-            };
-
-            if webhook.is_empty() {
-                // Log the evidence if no webhook is configured
-                println!("[Webhook] No webhook configured. Evidence: {:?}", evidence);
-                continue;
-            }
-
-            for wh in webhook.drain(..) {
-                let payload = serde_json::to_string(&evidence).unwrap();
-                let _ = wh.send(payload, image.clone()).await;
+                // Save the evidence and the image to ./evidence
+                // Create ./evidence directory if it doesn't exist
+                let _ = fs::create_dir_all("./evidence").await;
+                fs::write(&format!("./evidence/{}.jpg", evidence.id), &image)
+                    .await
+                    .unwrap();
+                fs::write(
+                    &format!("./evidence/{}.json", evidence.id),
+                    &serde_json::to_string(&evidence).unwrap(),
+                )
+                .await
+                .unwrap();
             }
 
             sleep(Duration::from_millis(100)).await;
         }
     });
 
+    // WEBHOOK SENDER THREAD: Send the saved evidence to configured webhooks
+    let device_clone = Arc::clone(&device);
+    let _ = tokio::spawn(async move {
+        loop {
+            // Load all evidences from ./evidence/{}.json (NOT ./evidence/uploaded.{}.json) that have not been sent yet
+            let mut evidences = {
+                let mut evidences = Vec::new();
+                let entries = match fs::read_dir("./evidence").await {
+                    Ok(entries) => entries,
+                    Err(_) => {
+                        sleep(Duration::from_millis(100)).await;
+                        continue;
+                    }
+                };
+
+                let mut dir = entries;
+                while let Ok(Some(entry)) = dir.next_entry().await {
+                    let file_name = entry.file_name().into_string().unwrap();
+                    if file_name.ends_with(".json") && !file_name.starts_with("uploaded.") {
+                        let data = match fs::read_to_string(entry.path()).await {
+                            Ok(d) => d,
+                            Err(_) => continue,
+                        };
+                        let evidence: Evidence = match serde_json::from_str(&data) {
+                            Ok(e) => e,
+                            Err(_) => continue,
+                        };
+                        evidences.push(evidence);
+                    }
+                }
+                evidences
+            };
+
+            for evidence in evidences.drain(..) {
+                let webhook = {
+                    let device = device_clone.read().await;
+                    match device.processor.webhook.clone() {
+                        Some(v) => v,
+                        None => continue,
+                    }
+                };
+
+                // Send evidence and captured image via webhook
+                let image = match fs::read(format!("./evidence/{}.jpg", evidence.id)).await {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                };
+                let payload = serde_json::to_string(&evidence).unwrap();
+
+                if webhook
+                    .send_evidence(payload, image.clone(), &evidence.id)
+                    .await
+                {
+                    // Rename the evidence files to mark them as uploaded
+                    let _ = fs::rename(
+                        format!("./evidence/{}.json", evidence.id),
+                        format!("./evidence/uploaded.{}.json", evidence.id),
+                    )
+                    .await;
+                    let _ = fs::rename(
+                        format!("./evidence/{}.jpg", evidence.id),
+                        format!("./evidence/uploaded.{}.jpg", evidence.id),
+                    )
+                    .await;
+                }
+            }
+
+            sleep(Duration::from_millis(100)).await;
+        }
+    });
+
+    // WEBHOOK UPDATER THREAD: Periodically update webhook info from Device
+    let device_clone = Arc::clone(&device);
+    let _ = tokio::spawn(async move {
+        loop {
+            let (processor, camera, webhook) = {
+                let device = device_clone.read().await;
+                let webhook = match device.processor.webhook.clone() {
+                    Some(v) => v,
+                    None => {
+                        sleep(Duration::from_secs(10)).await;
+                        continue;
+                    }
+                };
+
+                let camera = device.camera.values().cloned().collect::<Vec<Camera>>();
+
+                (device.processor.clone(), camera, webhook)
+            };
+
+            // Send a heartbeat or info update to the webhook
+            let payload = serde_json::json!({
+                "processor": processor,
+                "camera": camera,
+            });
+
+            let _ = webhook.send_update(payload.to_string()).await;
+
+            sleep(Duration::from_secs(10)).await;
+        }
+    });
+
     // INFERENCE ENGINE THREAD: Spawn inference engine thread with auto-restart capability
+    let device_clone = Arc::clone(&device);
     let _ = tokio::spawn(async move {
         // In simulation mode, just wait indefinitely (run simulator manually in another terminal)
         if simulation_mode {
-            println!("[Simulation] Waiting for simulator connection...");
-            println!("[Simulation] Run the simulator manually in another terminal:");
-            println!("[Simulation]   cd processor && python -m simulator.main");
-            println!("[Simulation] Press Ctrl+C to stop\n");
+            println!("[Inference Engine] Simulation mode active, not starting real engine");
             loop {
-                sleep(Duration::from_secs(3600)).await;
+                sleep(Duration::from_secs(60)).await;
             }
         }
+
+        let command = if simulation_mode {
+            println!("[Inference Engine] Running in SIMULATION MODE");
+            "python3 -m simulator.main"
+        } else {
+            "source setup.sh && python3 -m inference.main"
+        };
 
         // Normal mode: spawn the real Inference Engine with auto-restart
         let mut count = 0;
         let delay = Duration::from_secs(5);
+
+        let mut version = {
+            let device = device_clone.read().await;
+            device.processor.version
+        };
 
         loop {
             count += 1;
@@ -212,7 +317,7 @@ async fn main() {
             // Spawn the Python inference script with venv activation
             let mut child = match Command::new("bash")
                 .arg("-c")
-                .arg("source setup.sh && python3 -m inference.main")
+                .arg(command)
                 .stdout(Stdio::inherit()) // Show Python output
                 .stderr(Stdio::inherit()) // Show Python errors
                 .spawn()
@@ -233,21 +338,46 @@ async fn main() {
                 }
             };
 
-            // Wait for the process to exit
-            match child.wait() {
-                Ok(status) => {
-                    if status.success() {
-                        println!("[Inference Engine] Exited successfully (code 0)");
-                        println!(
-                            "[Inference Engine] Assuming intentional shutdown, not restarting"
-                        );
-                        break; // Clean exit - don't restart
-                    } else {
-                        eprintln!("[Inference Engine] Crashed with status: {}", status);
+            // Monitor loop: check for process exit OR version change
+            let exit_status = loop {
+                // Check if the child has exited
+                match child.try_wait() {
+                    Ok(Some(status)) => break Some(status),
+                    Ok(None) => {} // still running
+                    Err(e) => {
+                        eprintln!("[Inference Engine] Error checking process: {}", e);
+                        break None;
                     }
                 }
-                Err(e) => {
-                    eprintln!("[Inference Engine] Error waiting for process: {}", e);
+
+                // Check if version changed
+                let new_version = {
+                    let device = device_clone.read().await;
+                    device.processor.version
+                };
+
+                if new_version != version {
+                    println!(
+                        "[Inference Engine] Version changed ({} -> {}), restarting...",
+                        version, new_version
+                    );
+                    version = new_version;
+                    let _ = child.kill();
+                    let _ = child.wait(); // reap the process
+                    break None;
+                }
+
+                sleep(Duration::from_secs(1)).await;
+            };
+
+            // Handle clean exit (don't restart)
+            if let Some(status) = exit_status {
+                if status.success() {
+                    println!("[Inference Engine] Exited successfully (code 0)");
+                    println!("[Inference Engine] Assuming intentional shutdown, not restarting");
+                    break;
+                } else {
+                    eprintln!("[Inference Engine] Crashed with status: {}", status);
                 }
             }
 
@@ -257,7 +387,28 @@ async fn main() {
         }
 
         println!("[Inference Engine] Thread exiting");
+    });
+
+    // HTTP SERVER THREAD: Serve web interface API
+    let port = processor.address.port;
+    let addr = SocketAddr::from((processor.address.host, port));
+    let _ = HttpServer::new(move || {
+        let cors = Cors::permissive();
+
+        println!("[HTTP Server] Listening on http://{}", addr);
+
+        App::new()
+            .wrap(cors)
+            .app_data(Data::new(device.clone()))
+            .app_data(Data::new(reading.clone()))
+            .app_data(Data::new(violation.clone()))
+            .wrap(Logger::default())
+            .configure(routes::configure_routes)
+            .service(Files::new("/evidence", "./evidence").show_files_listing())
     })
+    .bind(addr)
+    .unwrap()
+    .run()
     .await;
 
     println!("\n=== SCM Processor Shutdown ===");

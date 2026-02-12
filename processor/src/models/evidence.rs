@@ -62,6 +62,7 @@ pub enum EvidencePersonViolation {
     MissingFacemask,
     MissingEarmuffs,
     MissingSafetyvest,
+    ImproperlyWornHardhat,
     ImproperlyWornGloves,
     ImproperlyWornShoes,
     ImproperlyWornFacemask,

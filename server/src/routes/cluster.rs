@@ -1,12 +1,13 @@
-use actix_web::{delete, get, post, web, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, delete, get, post, web};
 use mongodb::Database;
 
 use crate::{
     helper::error_handler,
     models::{
-        cluster::{Cluster, ClusterQuery, ClusterRequest, ClusterResponse},
+        cluster::{Cluster, ClusterQuery, ClusterRequest},
         user::{User, UserAuthentication, UserRole},
     },
+    views::cluster::ViewCluster,
 };
 
 #[post("")]
@@ -22,11 +23,19 @@ pub async fn create_cluster(
         Ok(()) => {
             if let Ok(mut users) = User::find_all(db.get_ref()).await {
                 for mut user in users.drain(..) {
-                    user.cluster_id.push(cluster._id);
+                    user.cluster_id.push(cluster.id.clone());
                     let _ = user.update(None, db.get_ref()).await;
                 }
             }
-            HttpResponse::Created().json(ClusterResponse::from(cluster))
+
+            let query = ClusterQuery {
+                cluster_id: Some(vec![cluster.id.clone()]),
+                text: None,
+                date_maximum: None,
+                date_minimum: None,
+            };
+
+            HttpResponse::Created().json(ViewCluster::find_one(&query, db.get_ref()).await.unwrap())
         }
         Err(e) => error_handler(e),
     }
@@ -45,7 +54,7 @@ pub async fn get_clusters(
 
     let mut query = query.into_inner();
     if issuer.role != UserRole::SuperAdmin {
-        let user = match User::find_by_id(&issuer._id, db.get_ref()).await {
+        let user = match User::find_by_id(&issuer.id, db.get_ref()).await {
             Ok(v) => v,
             _ => return HttpResponse::Unauthorized().body("UNAUTHORIZED"),
         };
@@ -53,7 +62,7 @@ pub async fn get_clusters(
         query.cluster_id = Some(user.cluster_id);
     }
 
-    match Cluster::find_many_minimal(&query, db.get_ref()).await {
+    match ViewCluster::find_many(&query, db.get_ref()).await {
         Ok(clusters) => HttpResponse::Ok().json(clusters),
         Err(e) => error_handler(e),
     }
@@ -73,7 +82,7 @@ pub async fn get_cluster(
     let mut query = query.into_inner();
     query.cluster_id = Some(vec![cluster_id]);
 
-    match Cluster::find_one_minimal(&query, db.get_ref()).await {
+    match ViewCluster::find_one(&query, db.get_ref()).await {
         Ok(cluster) => HttpResponse::Ok().json(cluster),
         Err(e) => error_handler(e),
     }

@@ -1,14 +1,11 @@
-use mongodb::{
-    bson::{doc, oid::ObjectId},
-    Database,
-};
+use mongodb::{Database, bson::doc};
 use serde::{Deserialize, Serialize};
 
 const COLLECTION: &str = "events";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Event {
-    pub _id: ObjectId,
+    pub id: String,
     pub target: Option<EventTarget>,
     pub kind: EventKind,
     pub timestamp: i64,
@@ -16,9 +13,9 @@ pub struct Event {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EventTarget {
-    Cluster(Option<ObjectId>),
-    Processor(Option<ObjectId>),
-    Evidence(Option<ObjectId>),
+    Cluster(Option<String>),
+    Processor(Option<String>),
+    Evidence(Option<String>),
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -63,6 +60,6 @@ impl Event {
     pub async fn delete(&self, db: &Database) {
         let collection = db.collection::<Self>(COLLECTION);
 
-        let _ = collection.delete_one(doc! { "_id": self._id }, None).await;
+        let _ = collection.delete_one(doc! { "id": &self.id }, None).await;
     }
 }

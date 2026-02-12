@@ -1,6 +1,4 @@
 use actix_web::HttpResponse;
-use mongodb::bson::oid::ObjectId;
-use serde::{Serialize, Serializer};
 
 use crate::models::event::EventKind;
 

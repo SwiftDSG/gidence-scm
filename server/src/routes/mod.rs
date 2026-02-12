@@ -1,12 +1,11 @@
-use actix_web::{get, HttpResponse};
+use actix_web::{HttpResponse, get};
 
 pub mod camera;
 pub mod cluster;
+pub mod evidence;
 pub mod processor;
 pub mod subscriber;
-pub mod uniform;
 pub mod user;
-pub mod violation;
 
 #[get("/ping")]
 pub async fn ping() -> HttpResponse {

@@ -5,12 +5,42 @@ annotator/input
 annotator/input*
 annotator/output
 processor/evidence
+server/evidence
 
 # Main runtime build artifacts
 processor/target
 
 # Configuration files with sensitive information
 processor/processor.json
+
+# Server build artifacts
+server/target
+
+# Nuxt dev/build outputs
+processor-web/.output
+processor-web/.data
+processor-web/.nuxt
+processor-web/.nitro
+processor-web/.cache
+processor-web/dist
+
+# Node dependencies
+processor-web/node_modules
+
+# Logs
+processor-web/logs
+processor-web/*.log
+
+# Misc
+.DS_Store
+processor-web/.DS_Store
+processor-web/.fleet
+processor-web/.idea
+
+# Local env files
+processor-web/.env
+processor-web/.env.*
+processor-web/!.env.example
 
 # Byte-compiled files
 __pycache__/
@@ -72,3 +102,77 @@ resources
 .vscode/launch.json
 .cursor/
 processor/inference/.DS_Store
+
+# Xcode
+DerivedData/
+*.xcworkspace
+*.xcuserstate
+!default.xcworkspace/contents.xcworkspacedata
+*.xccheckout
+*.moved-aside
+*.xcuserdatad/
+*.xcscmblueprint
+
+# Build
+build/
+Build/
+*.build/
+
+# Swift Package Manager
+Packages/
+.swiftpm/
+Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+*.xcconfig
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Archives
+*.xcarchive
+
+# Unit test and profiling
+*.gcda
+*.gcno
+*.profraw
+
+# Core Data
+*.xccoverage
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Code Signing
+*.mobileprovision
+*.codesign
+
+# Logs
+*.log
+*.history
+
+# Temporary
+*.swp
+*.swm
+*.swo
+*~
+
+# User-specific files
+*.DS_Store
+*.swifttemplate
+*.orig
+*.backup
+*.mode1
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.perspective

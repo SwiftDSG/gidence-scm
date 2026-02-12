@@ -1,8 +1,5 @@
-use actix_web::{delete, get, post, put, web, HttpMessage, HttpRequest, HttpResponse};
-use mongodb::{
-    bson::{doc, to_bson},
-    Database,
-};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, delete, get, post, put, web};
+use mongodb::Database;
 
 use crate::{
     helper::error_handler,
@@ -10,14 +7,15 @@ use crate::{
         cluster::Cluster,
         user::{
             User, UserAuthentication, UserCredential, UserQuery, UserRefreshRequest, UserRequest,
-            UserResponse, UserRole,
+            UserRole,
         },
     },
+    views::user::ViewUser,
 };
 
 #[get("")]
 pub async fn get_users(query: web::Query<UserQuery>, db: web::Data<Database>) -> HttpResponse {
-    match User::find_many_minimal(&query, db.get_ref()).await {
+    match ViewUser::find_many(&query, db.get_ref()).await {
         Ok(users) => HttpResponse::Ok().json(users),
         _ => HttpResponse::NotFound().body("USER_NOT_FOUND"),
     }
@@ -50,7 +48,7 @@ pub async fn update_user(
         Some(issuer) => issuer.clone(),
         None => return HttpResponse::Unauthorized().body("UNAUTHORIZED"),
     };
-    if issuer._id != user_id && issuer.role == UserRole::Officer {
+    if issuer.id != user_id && issuer.role == UserRole::Officer {
         return HttpResponse::Unauthorized().body("UNAUTHORIZED");
     }
 
@@ -71,7 +69,7 @@ pub async fn update_user(
             user.cluster_id = payload.cluster_id;
 
             match user.update(password, db.get_ref()).await {
-                Ok(_) => HttpResponse::Ok().json(UserResponse::from(user)),
+                Ok(_) => HttpResponse::Ok().json(ViewUser::from(user, db.get_ref()).await),
                 _ => HttpResponse::InternalServerError().body("USER_UPDATING_FAILED"),
             }
         }
@@ -121,7 +119,7 @@ pub async fn create_user(payload: web::Json<UserRequest>, db: web::Data<Database
 
     if let Ok(mut clusters) = Cluster::find_all(db.get_ref()).await {
         for cluster in clusters.drain(..) {
-            user.cluster_id.push(cluster._id);
+            user.cluster_id.push(cluster.id);
         }
     }
 
@@ -153,11 +151,11 @@ pub async fn refresh(
     let payload = payload.into_inner();
 
     match UserCredential::refresh(&payload.rtk, db.get_ref()).await {
-        Ok((atk, rtk, user)) => HttpResponse::Ok().json(doc! {
-            "atk": to_bson::<String>(&atk).unwrap(),
-            "rtk": to_bson::<String>(&rtk).unwrap(),
-            "user": to_bson::<UserResponse>(&user).unwrap()
-        }),
+        Ok((atk, rtk, user)) => HttpResponse::Ok().json(serde_json::json!({
+            "atk": atk,
+            "rtk": rtk,
+            "user": user
+        })),
         Err(e) => error_handler(e),
     }
 }

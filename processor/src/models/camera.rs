@@ -17,7 +17,7 @@ pub struct CameraAddress {
 }
 
 impl Camera {
-    fn insert_many(camera: &Vec<Self>) {
+    pub fn insert_many(camera: &Vec<Self>) {
         let camera_json = serde_json::to_string(&camera).unwrap();
         write("camera.json", camera_json).unwrap();
     }

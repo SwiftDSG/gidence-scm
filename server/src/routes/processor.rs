@@ -1,42 +1,25 @@
-use std::{collections::HashMap, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
-use actix::{Addr, Recipient};
-use actix_web::{delete, get, post, web, HttpResponse};
-use chrono::Utc;
-use mongodb::{bson::oid::ObjectId, Database};
-use tokio::{net::UdpSocket, sync::RwLock, time::timeout};
+use actix_web::{HttpResponse, delete, get, post, put, web};
+use chrono::Local;
+use mongodb::Database;
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 
 use crate::{
-    central::{CentralWebSocket, CentralWebSocketMessage, CentralWebSocketResponse},
     helper::error_handler,
     models::{
-        camera::{Camera, CameraQuery},
+        camera::{Camera, CameraQuery, CameraRequest},
         cluster::Cluster,
-        processor::{
-            Processor, ProcessorData, ProcessorMinimalResponse, ProcessorQuery, ProcessorRequest,
-            ProcessorResponse,
-        },
-        uniform::{Uniform, UniformQuery},
+        processor::{Processor, ProcessorQuery, ProcessorRequest},
     },
+    views::processor::ViewProcessor,
 };
 
-#[post("")]
-pub async fn create_processor(
-    payload: web::Json<ProcessorRequest>,
-    db: web::Data<Database>,
-) -> HttpResponse {
-    let request = payload.into_inner();
-
-    if (Cluster::find_by_id(&request.cluster_id, db.get_ref()).await).is_err() {
-        return HttpResponse::NotFound().body("NOT_FOUND");
-    }
-
-    let processor = Processor::from(request);
-
-    match processor.save(db.get_ref()).await {
-        Ok(()) => HttpResponse::Created().json(ProcessorResponse::from(processor)),
-        Err(e) => error_handler(e),
-    }
+#[derive(Debug, Deserialize, Serialize)]
+struct ProcessorSynchronization {
+    processor: ProcessorRequest,
+    camera: Vec<CameraRequest>,
 }
 
 #[delete("/{processor_id}")]
@@ -64,7 +47,7 @@ pub async fn get_processors(
     query: web::Query<ProcessorQuery>,
     db: web::Data<Database>,
 ) -> HttpResponse {
-    match Processor::find_many_minimal(&query, db.get_ref()).await {
+    match ViewProcessor::find_many(&query, db.get_ref()).await {
         Ok(processors) => HttpResponse::Ok().json(processors),
         Err(e) => error_handler(e),
     }
@@ -73,90 +56,77 @@ pub async fn get_processors(
 #[get("/{processor_id}")]
 pub async fn get_processor(
     processor_id: web::Path<String>,
+    query: web::Query<ProcessorQuery>,
     db: web::Data<Database>,
 ) -> HttpResponse {
-    let processor_id = match processor_id.parse::<ObjectId>() {
+    let processor_id = match processor_id.parse() {
         Ok(v) => v,
         _ => return HttpResponse::BadRequest().body("INVALID_ID"),
     };
 
-    match Processor::find_by_id(&processor_id, db.get_ref()).await {
-        Ok(processor) => {
-            HttpResponse::Ok().json(ProcessorMinimalResponse::from(processor, db.get_ref()).await)
-        }
+    let mut query = query.into_inner();
+    query.processor_id = Some(processor_id);
+
+    match ViewProcessor::find_one(&query, db.get_ref()).await {
+        Ok(processor) => HttpResponse::Ok().json(processor),
         Err(e) => error_handler(e),
     }
 }
 
-// For processors to update themselves
-#[get("/{processor_id}/{version}")]
+#[post("/{cluster_id}")]
 pub async fn sync_processor(
-    param: web::Path<(String, String)>,
+    cluster_id: web::Path<String>,
+    payload: web::Json<ProcessorSynchronization>,
+    processor_online: web::Data<Arc<RwLock<HashMap<String, i64>>>>,
     db: web::Data<Database>,
-    processor: web::Data<Arc<RwLock<HashMap<ObjectId, i64>>>>,
-    client: web::Data<
-        Arc<
-            RwLock<HashMap<Recipient<CentralWebSocketMessage>, (ObjectId, Addr<CentralWebSocket>)>>,
-        >,
-    >,
 ) -> HttpResponse {
-    let param = param.into_inner();
-    let processor_id = match param.0.parse::<ObjectId>() {
+    let cluster_id = match cluster_id.parse() {
         Ok(v) => v,
         _ => return HttpResponse::BadRequest().body("INVALID_ID"),
     };
-    let version = param.1;
 
-    let mut response = ProcessorData {
-        processor: match Processor::find_by_id(&processor_id, db.get_ref()).await {
-            Ok(mut processor) => {
-                if processor.version == version {
-                    return HttpResponse::NoContent().finish();
+    if (Cluster::find_by_id(&cluster_id, db.get_ref()).await).is_err() {
+        return HttpResponse::NotFound().body("NOT_FOUND");
+    }
+
+    let mut processor = match Processor::find_by_id(&payload.processor.id, db.get_ref()).await {
+        Ok(v) => {
+            // Saved version is newer or equal, no need to update
+            if v.version >= payload.processor.version {
+                {
+                    // Update processor online timestamp
+                    let mut processor_map = processor_online.write().await;
+                    processor_map.insert(
+                        payload.processor.id.clone(),
+                        Local::now().timestamp_millis() + 30000,
+                    );
                 }
-
-                processor.version = version;
-                let _ = processor.save(db.get_ref()).await;
-                ProcessorResponse::from(processor)
+                return HttpResponse::NoContent().finish();
             }
-            Err(_) => return HttpResponse::NotFound().finish(),
-        },
-        camera: Vec::new(),
-        uniform: Vec::new(),
+            v
+        }
+        Err(_) => {
+            let processor = Processor {
+                id: payload.processor.id.clone(),
+                cluster_id: cluster_id.clone(),
+                name: payload.processor.name.clone(),
+                model: payload.processor.model.clone(),
+                address: payload.processor.address.clone(),
+                version: payload.processor.version.clone(),
+            };
+
+            match processor.save(db.get_ref()).await {
+                Ok(()) => processor,
+                Err(e) => return error_handler(e),
+            }
+        }
     };
 
-    let mut processor = processor.write().await;
-    let client = client.read().await;
-
-    (*processor).insert(processor_id.clone(), Utc::now().timestamp_millis() + 60000);
-
-    let mut data = HashMap::new();
-
-    for (k, v) in processor.iter() {
-        data.insert(k.to_string(), v.clone());
-    }
-
-    let payload = CentralWebSocketResponse::Data(data);
-
-    for (_, (_, client)) in (*client).iter() {
-        let payload = serde_json::to_string(&payload).unwrap();
-        println!("BROADCASTING WS: {}", payload);
-        client.do_send(CentralWebSocketMessage(payload));
-    }
-
-    let cluster = match Cluster::find_by_id(
-        &ObjectId::from_str(&response.processor.cluster_id).unwrap(),
-        db.get_ref(),
-    )
-    .await
-    {
-        Ok(v) => v,
-        Err(_) => return HttpResponse::NotFound().finish(),
-    };
-
-    response.camera = Camera::find_many(
+    // Update cameras
+    let camera = match Camera::find_many(
         &CameraQuery {
             cluster_id: None,
-            processor_id: Some(processor_id.clone()),
+            processor_id: Some(payload.processor.id.clone()),
             date_minimum: None,
             date_maximum: None,
             text: None,
@@ -166,52 +136,106 @@ pub async fn sync_processor(
         db.get_ref(),
     )
     .await
-    .unwrap_or_default();
-
-    response.uniform = Uniform::find_many(
-        &UniformQuery {
-            uniform_id: Some(cluster.uniform_id),
-            text: None,
-        },
-        db.get_ref(),
-    )
-    .await
-    .unwrap_or_default();
-
-    HttpResponse::Ok().json(response)
-}
-
-#[get("/scan-processors")]
-pub async fn scan_processors() -> HttpResponse {
-    let socket = match UdpSocket::bind("0.0.0.0:34254").await {
+    {
         Ok(v) => v,
-        _ => return HttpResponse::InternalServerError().finish(),
+        Err(_) => Vec::new(),
     };
 
-    let mut hosts = HashMap::new();
-    let mut now = Utc::now().timestamp_millis();
-    let mut buf;
+    // Filter which cameras to delete by comparing existing cameras with payload cameras, delete those not present in payload
+    let mut cameras_to_delete = camera
+        .into_iter()
+        .filter(|c| !payload.camera.iter().any(|pc| pc.id == c.id))
+        .collect::<Vec<Camera>>();
 
-    let target = now + 1000;
-
-    while now < target {
-        now = Utc::now().timestamp_millis();
-        buf = [0; 1024];
-
-        let (bytes, addr) = match timeout(Duration::from_secs(1), socket.recv_from(&mut buf)).await
-        {
-            Ok(Ok(v)) => v,
-            _ => continue,
+    for camera in cameras_to_delete.drain(..) {
+        let _ = camera.delete(db.get_ref()).await;
+    }
+    for camera in &payload.camera {
+        let camera = Camera {
+            id: camera.id.clone(),
+            cluster_id: cluster_id.clone(),
+            processor_id: payload.processor.id.clone(),
+            name: camera.name.clone(),
+            address: camera.address.clone(),
         };
-        let ip = match addr {
-            SocketAddr::V4(v) => v.ip().octets(),
-            _ => continue,
-        };
-        let _id = String::from_utf8_lossy(&buf[..bytes]).to_string();
-        if hosts.get(&_id).is_none() {
-            hosts.insert(_id.to_string().clone(), ip);
-        }
+        let _ = camera.save(db.get_ref()).await;
     }
 
-    HttpResponse::Ok().json(hosts)
+    processor.name = payload.processor.name.clone();
+    processor.model = payload.processor.model.clone();
+    processor.address = payload.processor.address.clone();
+    processor.version = payload.processor.version.clone();
+
+    match processor.update(db.get_ref()).await {
+        Ok(()) => {
+            {
+                // Update processor online timestamp
+                let mut processor_map = processor_online.write().await;
+                processor_map.insert(
+                    payload.processor.id.clone(),
+                    Local::now().timestamp_millis() + 30000,
+                );
+            }
+            HttpResponse::Ok().json(
+                ViewProcessor::find_one(
+                    &ProcessorQuery {
+                        processor_id: Some(payload.processor.id.clone()),
+                        cluster_id: None,
+                        date_minimum: None,
+                        date_maximum: None,
+                        text: None,
+                        limit: None,
+                        skip: None,
+                    },
+                    db.get_ref(),
+                )
+                .await
+                .unwrap(),
+            )
+        }
+        Err(e) => error_handler(e),
+    }
+}
+
+#[put("/{processor_id}")]
+pub async fn update_processor(
+    processor_id: web::Path<String>,
+    payload: web::Json<ProcessorRequest>,
+    db: web::Data<Database>,
+) -> HttpResponse {
+    let processor_id = match processor_id.parse() {
+        Ok(processor_id) => processor_id,
+        Err(_) => return HttpResponse::BadRequest().body("INVALID_ID"),
+    };
+    let mut processor = match Processor::find_by_id(&processor_id, db.get_ref()).await {
+        Ok(v) => v,
+        Err(e) => return error_handler(e),
+    };
+
+    let request = payload.into_inner();
+
+    processor.name = request.name;
+    processor.model = request.model;
+    processor.address = request.address;
+    processor.version = Local::now().timestamp_millis();
+
+    match processor.update(db.get_ref()).await {
+        Ok(()) => HttpResponse::Created().json(
+            ViewProcessor::find_one(
+                &ProcessorQuery {
+                    processor_id: Some(processor_id.clone()),
+                    cluster_id: None,
+                    date_minimum: None,
+                    date_maximum: None,
+                    text: None,
+                    limit: None,
+                    skip: None,
+                },
+                db.get_ref(),
+            )
+            .await
+            .unwrap(),
+        ),
+        Err(e) => error_handler(e),
+    }
 }

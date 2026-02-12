@@ -1,4 +1,4 @@
-use mongodb::{options::Credential, Client, Database};
+use mongodb::{Client, Database, options::Credential};
 
 pub async fn connect() -> Option<Database> {
     let client_result = match (
@@ -22,7 +22,7 @@ pub async fn connect() -> Option<Database> {
     };
 
     match client_result {
-        Ok(client) => Some(client.database("mst")),
+        Ok(client) => Some(client.database("scm")),
         _ => None,
     }
 }

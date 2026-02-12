@@ -87,6 +87,7 @@ class UDSSender:
         try:
             payload = json.dumps(evidence).encode('utf-8')
             self.sock.sendall(payload)
+            self.sock.close()
             return True
         except (socket.error, BrokenPipeError):
             self.sock = None
@@ -106,60 +107,63 @@ class InferenceSimulator:
     PERSONS_CONFIG = [
         {
             "id": "001",
-            "bbox": [100, 100, 250, 400],
+            "bbox": [0.2395833333, 0.2398148148, 0.309375, 0.4037037037],
             "confidence": 0.95,
             "parts": [
-                {"label": "head", "bbox": [120, 110, 180, 170], "confidence": 0.92},
-                {"label": "hand", "bbox": [110, 250, 150, 300], "confidence": 0.88},
+                {"label": "head", "bbox": [0.240625, 0.2398148148, 0.26875, 0.3018518519] , "confidence": 0.92},
+                {"label": "hand", "bbox": [0.2401041667, 0.3490740741, 0.2557291667, 0.3740740741] , "confidence": 0.92},
+                {"label": "hand", "bbox": [0.2630208333, 0.3425925926, 0.2807291667, 0.3694444444], "confidence": 0.88},
             ],
             "equipment_normal": [
-                {"label": "hardhat", "bbox": [115, 100, 185, 165], "confidence": 0.91},
-                {"label": "gloves", "bbox": [105, 245, 155, 305], "confidence": 0.87},
-                {"label": "safetyvest", "bbox": [105, 170, 245, 350], "confidence": 0.93},
+                {"label": "hardhat", "bbox": [0.240625, 0.2398148148, 0.2677083333, 0.2805555556], "confidence": 0.91},
+                {"label": "facemask", "bbox": [0.2473958333, 0.275, 0.2671875, 0.3018518519], "confidence": 0.91},
+                {"label": "safetyvest", "bbox": [0.2427083333, 0.2731481481, 0.3, 0.3453703704], "confidence": 0.93},
             ],
             "equipment_violation": [
-                {"label": "hardhat", "bbox": [115, 100, 185, 165], "confidence": 0.91},
+                {"label": "hardhat", "bbox": [0.240625, 0.2398148148, 0.2677083333, 0.2805555556], "confidence": 0.91},
+                {"label": "facemask", "bbox": [0.2473958333, 0.275, 0.2671875, 0.3018518519], "confidence": 0.91},
                 # Missing gloves
-                {"label": "safetyvest", "bbox": [105, 170, 245, 350], "confidence": 0.93},
+                {"label": "safetyvest", "bbox": [0.2427083333, 0.2731481481, 0.3, 0.3453703704], "confidence": 0.93},
             ],
             "violations": ["missing_gloves"],
         },
         {
             "id": "002",
-            "bbox": [300, 120, 450, 420],
+            "bbox": [0.4015625, 0.0601851852, 0.4505208333, 0.387962963],
             "confidence": 0.92,
             "parts": [
-                {"label": "head", "bbox": [320, 130, 380, 190], "confidence": 0.90},
-                {"label": "hand", "bbox": [310, 270, 350, 320], "confidence": 0.85},
+                {"label": "head", "bbox": [0.415625, 0.062962963, 0.4416666667, 0.1185185185], "confidence": 0.90},
+                {"label": "face", "bbox": [0.4255208333, 0.0898148148, 0.4395833333, 0.1185185185], "confidence": 0.90},
+                {"label": "hand", "bbox": [0.4276041667, 0.1148148148, 0.4416666667, 0.1472222222], "confidence": 0.85},
             ],
             "equipment_normal": [
-                {"label": "hardhat", "bbox": [315, 120, 385, 185], "confidence": 0.89},
-                {"label": "gloves", "bbox": [305, 265, 355, 325], "confidence": 0.86},
-                {"label": "safetyvest", "bbox": [305, 190, 445, 370], "confidence": 0.91},
+                {"label": "hardhat", "bbox": [0.4135416667, 0.0601851852, 0.4453125, 0.0981481481], "confidence": 0.89},
+                {"label": "safetyvest", "bbox": [0.4010416667, 0.1148148148, 0.4515625, 0.2351851852], "confidence": 0.91},
             ],
             "equipment_violation": [
                 # Missing hardhat
-                {"label": "gloves", "bbox": [305, 265, 355, 325], "confidence": 0.86},
-                {"label": "safetyvest", "bbox": [305, 190, 445, 370], "confidence": 0.91},
+                {"label": "hardhat", "bbox": [0.4135416667, 0.0601851852, 0.4453125, 0.0981481481], "confidence": 0.89},
+                {"label": "safetyvest", "bbox": [0.4010416667, 0.1148148148, 0.4515625, 0.2351851852], "confidence": 0.91},
             ],
-            "violations": ["missing_hardhat"],
+            "violations": ["missing_gloves", "missing_facemask"],
         },
         {
             "id": "003",
-            "bbox": [500, 80, 620, 380],
+            "bbox": [0.540625, 0.1166666667, 0.5973958333, 0.4268518519],
             "confidence": 0.88,
             "parts": [
-                {"label": "head", "bbox": [515, 90, 565, 145], "confidence": 0.87},
+                {"label": "head", "bbox": [0.5604166667, 0.1166666667, 0.5921875, 0.1722222222], "confidence": 0.87},
+                {"label": "hand", "bbox": [0.55625, 0.2953703704, 0.5708333333, 0.3259259259], "confidence": 0.87},
             ],
             "equipment_normal": [
-                {"label": "hardhat", "bbox": [510, 80, 570, 140], "confidence": 0.85},
-                {"label": "safetyvest", "bbox": [505, 145, 615, 330], "confidence": 0.89},
+                {"label": "hardhat", "bbox": [0.540625, 0.1611111111, 0.5729166667, 0.2203703704], "confidence": 0.85},
+                {"label": "safetyvest", "bbox": [0.5546875, 0.1657407407, 0.5989583333, 0.3037037037], "confidence": 0.89},
             ],
             "equipment_violation": [
-                {"label": "hardhat", "bbox": [510, 80, 570, 140], "confidence": 0.85},
-                # Missing safetyvest
+                {"label": "hardhat", "bbox": [0.540625, 0.1611111111, 0.5729166667, 0.2203703704], "confidence": 0.85},
+                {"label": "safetyvest", "bbox": [0.5546875, 0.1657407407, 0.5989583333, 0.3037037037], "confidence": 0.89},
             ],
-            "violations": ["missing_safetyvest"],
+            "violations": ["missing_gloves", "improperly_worn_hardhat"],
         },
     ]
 
@@ -184,7 +188,7 @@ class InferenceSimulator:
         self.violation_image = self.images_dir / "violation.jpg"
 
         # Evidence output directory
-        self.evidence_dir = Path(__file__).parent.parent / "evidence"
+        self.evidence_dir = Path("/tmp")
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
 
     def get_persons(self) -> List[dict]:
@@ -219,10 +223,10 @@ class InferenceSimulator:
             return self.normal_image if self.normal_image.exists() else None
 
     def save_evidence_image(self, frame_id: str, timestamp: int):
-        """Copy the appropriate image to evidence directory."""
+        """Overwrite the appropriate image to evidence directory."""
         src_image = self.get_current_image()
         if src_image:
-            dst_path = self.evidence_dir / f"{self.camera_id}_{frame_id}_{timestamp}.jpg"
+            dst_path = self.evidence_dir / f"{self.camera_id}.jpg"
             shutil.copy(src_image, dst_path)
             return dst_path
         return None
