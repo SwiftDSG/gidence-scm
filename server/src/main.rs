@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fs::read_to_string, io, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, VecDeque},
+    fs::read_to_string,
+    io,
+    sync::Arc,
+    time::Duration,
+};
 
 use actix::{Addr, Recipient};
 use actix_cors::Cors;
@@ -13,6 +19,8 @@ use tokio::{sync::RwLock, time::sleep};
 use central::{CentralWebSocket, CentralWebSocketMessage};
 use models::user::{User, UserAuthenticationMiddlewareFactory, UserRole, load_keys};
 use uuid::Uuid;
+
+use crate::models::{cluster::Cluster, evidence::Evidence, subscriber::Subscriber};
 
 mod central;
 mod database;
@@ -95,6 +103,7 @@ async fn main() -> io::Result<()> {
         .expect("Failed to connect to database");
 
     let processor = Arc::new(RwLock::new(HashMap::<String, i64>::new()));
+    let evidence = Arc::new(RwLock::new(VecDeque::<Evidence>::new()));
     let client = Arc::new(RwLock::new(HashMap::<
         Recipient<CentralWebSocketMessage>,
         (String, Addr<CentralWebSocket>),
@@ -148,6 +157,109 @@ async fn main() -> io::Result<()> {
             }
 
             sleep(Duration::from_millis(30000)).await;
+        }
+    });
+
+    let database_clone = database.clone();
+    let evidence_clone = evidence.clone();
+    let client_clone = client.clone();
+    let _ = tokio::spawn(async move {
+        let mut file = File::open("keys/apns.p8").expect("APNS_NOT_FOUND");
+
+        let key_id = std::env::var("APNS_KEY").expect("APNS_KEY_NOT_FOUND");
+        let team_id = std::env::var("APNS_TEAM").expect("APNS_TEAM_NOT_FOUND");
+
+        let mut apns = Client::token(
+            &mut file,
+            key_id.clone(),
+            team_id.clone(),
+            ClientConfig::new(a2::Endpoint::Sandbox),
+        )
+        .expect("TOKEN_CREATION_FAILED");
+
+        loop {
+            let evidence = {
+                let mut evidence = evidence_clone.write().await;
+                match (*evidence).pop_front() {
+                    Some(v) => v,
+                    None => {
+                        sleep(Duration::from_secs(1)).await;
+                        continue;
+                    }
+                }
+            };
+
+            let mut users =
+                match User::find_many_by_cluster_id(&evidence.cluster_id, &database_clone).await {
+                    Ok(v) => v,
+                    _ => continue,
+                };
+
+            for user in users.drain(..) {
+                let mut subscribers =
+                    match Subscriber::find_many_by_user_id(&user._id, &database_clone).await {
+                        Ok(v) => v,
+                        _ => continue,
+                    };
+
+                for subscriber in subscribers.drain(..) {
+                    match &subscriber.kind {
+                        SubscriberKind::Apple(token) => {
+                            let options = NotificationOptions {
+                                apns_topic: Some("com.gidence.scm"),
+                                ..Default::default()
+                            };
+
+                            let title =
+                                format!("Terjadi {} Pelanggaran Baru!", violation.uniform.len());
+                            let subtitle = match Processor::find_by_id(
+                                &violation.processor_id,
+                                &database_clone,
+                            )
+                            .await
+                            {
+                                Ok(v) => format!("Tertangkap kamera {}", v.name),
+                                _ => String::from("Cek sekarang!"),
+                            };
+
+                            let builder = DefaultNotificationBuilder::new()
+                                .set_title(&title)
+                                .set_subtitle(&subtitle)
+                                .set_sound("ping.flac");
+
+                            let payload = builder.build(token, options);
+
+                            if let Err(err) = apns.send(payload).await {
+                                println!("SENDING FAILED: {:#?}", err);
+                                let response = match err {
+                                    a2::Error::ResponseError(v) => v,
+                                    _ => continue,
+                                };
+
+                                if response.code == 403 || response.code == 410 {
+                                    let _ = subscriber.delete(&database_clone).await;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            drop(violation);
+
+            counter += 1;
+            sleep(Duration::from_secs(5)).await;
+
+            if counter >= 240 {
+                apns = Client::token(
+                    &mut file,
+                    key_id.clone(),
+                    team_id.clone(),
+                    ClientConfig::new(a2::Endpoint::Sandbox),
+                )
+                .expect("TOKEN_CREATION_FAILED");
+                counter = 0;
+            }
         }
     });
 

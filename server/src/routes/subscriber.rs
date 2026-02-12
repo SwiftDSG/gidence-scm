@@ -1,4 +1,4 @@
-use actix_web::{delete, post, put, web, HttpResponse};
+use actix_web::{HttpResponse, delete, post, put, web};
 use mongodb::Database;
 
 use crate::{
@@ -27,7 +27,7 @@ pub async fn subscribe(
     }
 }
 
-#[put("/subscriber_id")]
+#[put("/{subscriber_id}")]
 pub async fn refresh(
     subscriber_id: web::Path<String>,
     payload: web::Json<SubscriberRequest>,
