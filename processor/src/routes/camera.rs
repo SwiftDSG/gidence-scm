@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use actix_web::{HttpResponse, delete, get, post, put, web};
-use tokio::sync::RwLock;
+use tokio::{fs, sync::RwLock};
 use uuid::Uuid;
 
-use crate::models::{Device, camera::Camera};
+use crate::models::{Device, camera::Camera, evidence::Evidence};
 
 #[post("")]
 pub async fn create_camera(
@@ -64,15 +64,49 @@ pub async fn get_cameras(device: web::Data<Arc<RwLock<Device>>>) -> HttpResponse
     HttpResponse::Ok().json(cameras)
 }
 
-#[delete("/{id}")]
+#[get("/{camera_id}/evidences")]
+pub async fn get_camera_evidences(camera_id: web::Path<String>) -> HttpResponse {
+    let camera_id = camera_id.into_inner();
+
+    // Read every json within ./evidence directory and filter by camera_id
+    let mut evidences = Vec::new();
+    let entries = match fs::read_dir("./evidence").await {
+        Ok(entries) => entries,
+        Err(_) => {
+            return HttpResponse::Ok().json(evidences);
+        }
+    };
+
+    let mut dir = entries;
+    while let Ok(Some(entry)) = dir.next_entry().await {
+        let data = match fs::read_to_string(entry.path()).await {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+        let evidence: Evidence = match serde_json::from_str(&data) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        if evidence.camera_id != camera_id {
+            continue;
+        }
+
+        evidences.push(evidence);
+    }
+
+    HttpResponse::Ok().json(evidences)
+}
+
+#[delete("/{camera_id}")]
 pub async fn delete_camera(
-    id: web::Path<String>,
+    camera_id: web::Path<String>,
     device: web::Data<Arc<RwLock<Device>>>,
 ) -> HttpResponse {
-    let id = id.into_inner();
+    let camera_id = camera_id.into_inner();
 
     let mut device = device.write().await;
-    if device.camera.remove(&id).is_some() {
+    if device.camera.remove(&camera_id).is_some() {
         Camera::insert_many(
             &device
                 .camera

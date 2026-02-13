@@ -39,6 +39,19 @@ pub async fn get_frame(camera_id: web::Path<String>, req: HttpRequest) -> HttpRe
         .unwrap_or_else(|_| HttpResponse::NotFound().finish())
 }
 
+#[get("/evidence/{evidence_id}")]
+pub async fn get_evidence(evidence_id: web::Path<String>, req: HttpRequest) -> HttpResponse {
+    let evidence_id = evidence_id.into_inner();
+
+    match NamedFile::open(&format!("./evidence/{}.jpg", evidence_id)) {
+        Ok(file) => file.into_response(&req),
+        Err(_) => match NamedFile::open(&format!("./evidence/uploaded.{}.jpg", evidence_id)) {
+            Ok(file) => file.into_response(&req),
+            Err(_) => HttpResponse::NotFound().finish(),
+        },
+    }
+}
+
 #[get("/ping")]
 pub async fn ping() -> HttpResponse {
     HttpResponse::Ok().body("pong")
@@ -49,6 +62,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(get_reading)
         .service(get_device)
         .service(get_frame)
+        .service(get_evidence)
         .service(
             web::scope("/processor")
                 .service(processor::get_processor)
@@ -56,6 +70,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         )
         .service(
             web::scope("/camera")
+                .service(camera::get_camera_evidences)
                 .service(camera::get_cameras)
                 .service(camera::create_camera)
                 .service(camera::update_camera)
