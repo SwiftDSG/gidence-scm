@@ -9,16 +9,16 @@
         <gd-input-text
           class="gd-menu-input"
           v-model="nameInputValue"
-          :label="nameInputConfig.label"
-          :placeholder="nameInputConfig.placeholder"
-          :name="nameInputConfig.name"
+          label="Camera name"
+          placeholder="South Entrance Camera"
+          name="name"
         />
       </div>
       <div class="gd-menu-input-wrapper">
         <gd-input-text
           class="gd-menu-input"
           v-model="addressHostInputValue[0]"
-          label="Host"
+          label="RTSP Host"
           placeholder="0"
           name="address-host-0"
           style="width: calc((100% - 1.5rem) / 4)"
@@ -48,10 +48,10 @@
       <div class="gd-menu-input-wrapper">
         <gd-input-text
           class="gd-menu-input"
-          v-model="addressCameraInputValue"
-          :label="addressCameraInputConfig.label"
-          :placeholder="addressCameraInputConfig.placeholder"
-          :name="addressCameraInputConfig.name"
+          v-model="addressPortInputValue"
+          label="RTSP Port"
+          placeholder="502"
+          name="address-port"
         />
       </div>
     </div>
@@ -88,20 +88,7 @@
     "",
     "",
   ]);
-  const addressCameraInputValue = ref<string>("");
-
-  // Input configs
-  const nameInputConfig = {
-    name: "name",
-    label: "Camera name",
-    placeholder: "Camera 01",
-  };
-
-  const addressCameraInputConfig = {
-    name: "address-camera",
-    label: "Camera",
-    placeholder: "502",
-  };
+  const addressPortInputValue = ref<string>("");
 
   const camera = computed<Camera | null>(() => {
     return cameras.value.find((p) => p.id === props.camera_id) || null;
@@ -112,7 +99,7 @@
     const host1 = parseInt(addressHostInputValue.value[1]);
     const host2 = parseInt(addressHostInputValue.value[2]);
     const host3 = parseInt(addressHostInputValue.value[3]);
-    const port = parseInt(addressCameraInputValue.value);
+    const port = parseInt(addressPortInputValue.value);
 
     if (
       !isNaN(host0) &&
@@ -169,7 +156,7 @@
           val.address.host[2].toString(),
           val.address.host[3].toString(),
         ];
-        addressCameraInputValue.value = val.address.port.toString();
+        addressPortInputValue.value = val.address.port.toString();
       }
     },
     { once: true, immediate: true },

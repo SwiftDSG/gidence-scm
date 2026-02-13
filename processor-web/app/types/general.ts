@@ -13,10 +13,7 @@ export type Device = {
 
 export type Reading = {
   camera: {
-    [id: string]: {
-      evidence: Evidence | null;
-      timestamp: number;
-    };
+    [id: string]: [Evidence, number, number];
   };
 };
 

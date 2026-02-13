@@ -17,5 +17,5 @@ pub struct Device {
 // Reading struct to hold the state of evidence per camera
 #[derive(Clone, Serialize)]
 pub struct Reading {
-    pub camera: HashMap<String, (Option<Evidence>, i64)>, // camera_id -> (evidence, timestamp)
+    pub camera: HashMap<String, (Option<Evidence>, i64, f64)>, // camera_id -> (evidence, timestamp, fps)
 }

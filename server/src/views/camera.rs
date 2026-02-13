@@ -197,6 +197,12 @@ impl ViewCamera {
                                 "$eq": ["$id", "$$cluster_id"]
                             }
                         }
+                    },
+                    {
+                        "$project": {
+                            "id": "$id",
+                            "name": "$name"
+                        }
                     }
                 ]
             }
@@ -215,6 +221,12 @@ impl ViewCamera {
                                 "$eq": ["$id", "$$processor_id"]
                             }
                         }
+                    },
+                    {
+                        "$project": {
+                            "id": "$id",
+                            "name": "$name"
+                        }
                     }
                 ]
             }
@@ -227,15 +239,21 @@ impl ViewCamera {
                 "cluster": {
                     "$cond": [
                         { "$first": "$cluster" },
-                        { "$first": "$cluster.name" },
-                        { "$toString": "$cluster_id" }
+                        { "$first": "$cluster" },
+                        {
+                            "id": "$cluster_id",
+                            "name": "$cluster_id"
+                        }
                     ]
                 },
                 "processor": {
                     "$cond": [
                         { "$first": "$processor" },
-                        { "$first": "$processor.name" },
-                        { "$toString": "$processor_id" }
+                        { "$first": "$processor" },
+                        {
+                            "id": "$processor_id",
+                            "name": "$processor_id"
+                        }
                     ]
                 },
                 "address": "$address",

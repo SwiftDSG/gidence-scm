@@ -1,182 +1,259 @@
 <template>
   <div
     class="gd-camera"
-    :class="{ '--active': hasViolation, '--offline': !isOnline }"
+    :class="online ? '--online' : '--offline'"
     @click="emits('click')"
   >
     <div class="gd-camera-header">
-      <div class="gd-camera-header-icon">
-        <gd-svg name="camera" :color="hasViolation ? 'error' : 'primary'" />
-      </div>
-      <div class="gd-camera-header-info">
-        <span class="gd-camera-header-info-name gd-headline-4">{{
+      <div
+        class="gd-camera-header-status"
+        :class="online ? '--online' : '--offline'"
+      ></div>
+      <div class="gd-camera-header-information">
+        <span class="gd-camera-header-information-name gd-headline-5">{{
           camera.name
         }}</span>
-        <span class="gd-camera-header-info-address gd-body-5">{{
+        <span class="gd-camera-header-information-address gd-body-5">{{
           formatAddress(camera.address)
         }}</span>
       </div>
+      <div class="gd-camera-header-action">
+        <gd-button type="tertiary" :icon="'dots'" @click="emits('click')" />
+      </div>
     </div>
-    <div class="gd-camera-status">
-      <div
-        class="gd-camera-status-indicator"
-        :class="isOnline ? '--online' : '--offline'"
-      ></div>
-      <span class="gd-camera-status-text gd-body-5">
-        {{ isOnline ? "Online" : "Offline" }}
-      </span>
-    </div>
-    <div v-if="hasViolation && latestEvidence" class="gd-camera-violation">
-      <span class="gd-camera-violation-count gd-headline-6">
-        {{ latestEvidence.person.reduce((sum, p) => sum + p.violation.length, 0) }} violations
-      </span>
-      <span class="gd-camera-violation-time gd-body-5">
-        {{ formatTime(latestEvidence.timestamp) }}
-      </span>
+    <div class="gd-camera-body">
+      <div class="gd-camera-body-evidence">
+        <!-- <img
+          class="gd-camera-body-evidence-image"
+          :src="evidence ? `${api}/frame/${camera.id}?id=${evidence.id}` : ''"
+        /> -->
+        <gd-camera-evidence
+          v-if="evidence"
+          :camera_id="camera.id"
+          :evidence="evidence"
+        />
+      </div>
+      <div class="gd-camera-body-metrics">
+        <div class="gd-camera-body-metrics-item">
+          <span class="gd-camera-body-metrics-item-placeholder gd-body-5"
+            >FPS</span
+          >
+          <span class="gd-camera-body-metrics-item-value gd-headline-5">{{
+            (reading?.[2] || 0).toFixed(2)
+          }}</span>
+        </div>
+        <div class="gd-camera-body-metrics-item">
+          <span class="gd-camera-body-metrics-item-placeholder gd-body-5"
+            >Last update</span
+          >
+          <span class="gd-camera-body-metrics-item-value gd-headline-5">{{
+            formatTime(reading?.[1] || 0)
+          }}</span>
+        </div>
+        <div class="gd-camera-body-metrics-item">
+          <span class="gd-camera-body-metrics-item-placeholder gd-body-5"
+            >Persons</span
+          >
+          <span class="gd-camera-body-metrics-item-value gd-headline-5">{{
+            evidence?.person.length || 0
+          }}</span>
+        </div>
+        <div class="gd-camera-body-metrics-item">
+          <span class="gd-camera-body-metrics-item-placeholder gd-body-5"
+            >Violator</span
+          >
+          <span class="gd-camera-body-metrics-item-value gd-headline-5">{{
+            evidence?.person.filter((a) => a.violation.length > 0).length || 0
+          }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { Camera } from "~/types/camera";
-import type { Evidence } from "~/types/evidence";
+  import type { Camera } from "~/types/camera";
+  import type { Reading } from "~/types/general";
 
-const props = defineProps<{
-  camera: Camera;
-  evidence?: Evidence | null;
-  online?: boolean;
-}>();
+  const props = defineProps<{
+    camera: Camera;
+    reading?: Reading["camera"][0];
+  }>();
+  const emits = defineEmits<{
+    (event: "click"): void;
+  }>();
+  const { reading: r } = useReader();
+  const {
+    public: { processor: api },
+  } = useRuntimeConfig();
 
-const emits = defineEmits<{
-  (event: "click"): void;
-}>();
+  const reading = computed(() => {
+    if (!r.value) return undefined;
+    return r.value.camera[props.camera.id];
+  });
+  const online = computed(
+    () =>
+      reading.value?.[1] && new Date().getTime() < reading.value?.[1] + 30000,
+  );
+  const evidence = computed(() => reading.value?.[0]);
 
-const isOnline = computed(() => props.online ?? false);
-const latestEvidence = computed(() => props.evidence);
-const hasViolation = computed(() => {
-  if (!latestEvidence.value) return false;
-  return latestEvidence.value.person.some((p) => p.violation.length > 0);
-});
+  const formatAddress = (address: Camera["address"]): string => {
+    const host = address.host.join(".");
+    const port = address.port;
+    const path = address.path || "";
+    return `${host}:${port}${path}`;
+  };
 
-const formatAddress = (address: Camera["address"]): string => {
-  const host = address.host.join(".");
-  const port = address.port;
-  const path = address.path || "";
-  return `${host}:${port}${path}`;
-};
+  const formatTime = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString();
+  };
 
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString();
-};
+  watch(
+    () => evidence.value?.id,
+    (val) => {
+      console.log(val);
+    },
+  );
 </script>
 
 <style lang="scss" scoped>
-.gd-camera {
-  cursor: pointer;
-  position: relative;
-  width: 100%;
-  padding: 1rem;
-  border: var(--border);
-  border-radius: 0.75rem;
-  background: var(--background-depth-one-color);
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  &.--active {
-    border-color: var(--error-color);
-    background: var(--error-background-color, rgba(239, 68, 68, 0.05));
-  }
-
-  &.--offline {
-    opacity: 0.5;
-  }
-
-  &-header {
+  .gd-camera {
     position: relative;
+    width: 100%;
+    height: 100%;
+    background: var(--background-depth-one-color);
+    padding: 0.75rem;
+    border: var(--border);
+    border-radius: 0.75rem;
+    box-sizing: border-box;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 0.75rem;
 
-    &-icon {
+    &.--active {
+      border-color: var(--error-color);
+      background: var(--error-background-color, rgba(239, 68, 68, 0.05));
+    }
+
+    &.--offline {
+      opacity: 0.5;
+    }
+
+    &-header {
       position: relative;
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: 0.5rem;
-      background: var(--background-depth-two-color);
       display: flex;
-      justify-content: center;
       align-items: center;
-      flex-shrink: 0;
+      gap: 0.5rem;
+
+      &-status {
+        position: relative;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        background: var(--background-depth-two-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 0;
+        &::before {
+          content: "";
+          position: absolute;
+          width: 1rem;
+          height: 1rem;
+          border-radius: 0.5rem;
+          opacity: 0.2;
+        }
+        &::after {
+          content: "";
+          position: absolute;
+          width: 0.5rem;
+          height: 0.5rem;
+          border-radius: 0.25rem;
+        }
+        &.--online {
+          &::before {
+            background: var(--success-color);
+          }
+          &::after {
+            background: var(--success-color);
+          }
+        }
+        &.--offline {
+          &::before {
+            background: var(--error-color);
+          }
+          &::after {
+            background: var(--error-color);
+          }
+        }
+      }
+
+      &-information {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+
+        &-name {
+          color: var(--font-primary-color);
+        }
+
+        &-address {
+          color: var(--font-secondary-color);
+        }
+      }
+
+      &-action {
+        position: absolute;
+        top: 0;
+        right: 0;
+      }
     }
 
-    &-info {
+    &-body {
       position: relative;
+      flex-grow: 1;
       display: flex;
-      flex-direction: column;
+      gap: 0.75rem;
 
-      &-name {
-        color: var(--font-primary-color);
+      &-evidence {
+        position: relative;
+        width: calc(100% - 6.75rem);
+        height: 100%;
+        background-color: var(--background-depth-two-color);
+        border-radius: 0.5rem;
+        display: flex;
+        overflow: hidden;
+        &-image {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
       }
-
-      &-address {
-        color: var(--font-secondary-color);
+      &-metrics {
+        position: relative;
+        width: 6rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        &-item {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          background-color: var(--background-depth-two-color);
+          border-radius: 0.5rem;
+          padding: 0.5rem;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          &-placeholder {
+            color: var(--font-secondary-color);
+          }
+        }
       }
     }
   }
-
-  &-status {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-
-    &-indicator {
-      position: relative;
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      background: var(--error-color);
-
-      &.--online {
-        background: var(--success-color);
-      }
-
-      &.--offline {
-        background: var(--error-color);
-      }
-    }
-
-    &-text {
-      color: var(--font-secondary-color);
-    }
-  }
-
-  &-violation {
-    position: relative;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    background: var(--error-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    &-count {
-      color: var(--font-tertiary-color);
-    }
-
-    &-time {
-      color: var(--font-tertiary-color);
-      opacity: 0.8;
-    }
-  }
-}
 </style>

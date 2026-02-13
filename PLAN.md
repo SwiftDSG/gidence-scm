@@ -1,6 +1,6 @@
 # SCM Project Plan
 
-**Goal:** Finish iOS app, processor web interface, and benchmarks
+**Goal:** Finish iOS app, processor web, server web, Telegram notifications, and benchmarks
 **Last updated:** 2026-02-12
 
 ---
@@ -85,19 +85,64 @@ Nuxt.js dashboard running locally on the Raspberry Pi. Sidebar handles processor
 
 ---
 
-## Phase 5: Benchmarks & Polish
+## Phase 5: Server Web Interface
 
-- [x] 5.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
-- [x] 5.2 — Error handling audit: silent failures in iOS managers
+Web version of the iOS app — accessible from any device via browser. Same features: auth, clusters, evidences with violation breakdown, user management, real-time updates.
+
+- [ ] 5.1 — Auth: login page
+  - Login form (email/password)
+  - Token storage + auto-refresh
+  - Protected routes (redirect to login if unauthenticated)
+- [ ] 5.2 — Cluster list + detail page
+  - List all clusters the user belongs to
+  - Cluster detail: cameras list, users list, processor status (online/offline)
+- [ ] 5.3 — Evidence list + detail page
+  - Filterable list (by cluster, camera, date range)
+  - Detail page: image viewer with person bounding boxes, violation breakdown per person
+  - Same violation coloring logic as iOS (body parts blue/red, equipment green/red)
+- [ ] 5.4 — User management page
+  - List users in a cluster
+  - Create / edit / delete users
+- [ ] 5.5 — Real-time updates via WebSocket
+  - Live evidence feed (new evidences appear without refresh)
+  - Processor online/offline status
+- [ ] 5.6 — Notification settings
+  - Subscribe / unsubscribe from push notifications
+  - Toggle notification preferences
+
+---
+
+## Phase 6: Telegram Notifications
+
+Additional notification channel alongside APNS. Server sends violation alerts to individual users via a Telegram bot.
+
+- [ ] 6.1 — Server: Telegram bot integration
+  - Create bot via BotFather, store bot token in server config
+  - Add Telegram send logic alongside existing APNS notification thread
+  - When violation evidence is received, send to both APNS subscribers AND Telegram subscribers
+- [ ] 6.2 — Subscriber model: support Telegram
+  - Extend subscriber `kind` to support `telegram` with chat ID (alongside existing `apple` with device token)
+  - Update `POST /subscribers` and `DELETE /subscribers` to handle Telegram kind
+- [ ] 6.3 — User linking via bot
+  - User sends `/start` to the bot with a linking code (generated from the app)
+  - Bot registers the user's Telegram chat ID as a subscriber
+  - Linking code ties the chat ID to the correct user + cluster
+
+---
+
+## Phase 7: Benchmarks & Polish
+
+- [x] 7.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
+- [x] 7.2 — Error handling audit: silent failures in iOS managers
   - Added generic `req<T>` and `status` helpers on Network to centralize error handling
   - Refactored all managers to use the new helpers
   - Fixed double-callback bug in NotificationManager (subscribe/refresh)
   - Fixed Bool vs Bool? type mismatch in delete/unsubscribe callbacks
-- [ ] 5.3 — Test push notification end-to-end
+- [ ] 7.3 — Test push notification end-to-end
   - Simulator → server → APNS → iOS device
-- [ ] 5.4 — Performance benchmarks
-- [ ] 5.5 — Portfolio documentation
-- [ ] 5.6 — Demo video
+- [ ] 7.4 — Performance benchmarks
+- [ ] 7.5 — Portfolio documentation
+- [ ] 7.6 — Demo video
 
 ---
 

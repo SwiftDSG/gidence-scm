@@ -52,6 +52,7 @@ export type EvidencePersonViolation =
   | "missing_facemask"
   | "missing_earmuffs"
   | "missing_safetyvest"
+  | "improperly_worn_hardhat"
   | "improperly_worn_gloves"
   | "improperly_worn_shoes"
   | "improperly_worn_facemask"

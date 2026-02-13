@@ -59,7 +59,7 @@ async fn main() {
     let mut cameras_raw = Camera::load();
     let mut cameras = HashMap::new();
     for c in cameras_raw.drain(..) {
-        reading.camera.insert(c.id.clone(), (None, timestamp));
+        reading.camera.insert(c.id.clone(), (None, timestamp, 0.0));
         cameras.insert(c.id.clone(), c);
     }
     device.camera = cameras;
@@ -70,6 +70,7 @@ async fn main() {
     let device = Arc::new(RwLock::new(device));
 
     // UDS THREAD: UDS listener for receiving Evidence structs
+    let device_clone = Arc::clone(&device);
     let reading_clone = Arc::clone(&reading);
     let queue_clone = Arc::clone(&queue);
     let _ = tokio::spawn(async move {
@@ -99,14 +100,33 @@ async fn main() {
 
             // Update the reading with the new evidence
             {
-                let mut queue = queue_clone.write().await;
-                queue.push_back(evidence.clone());
+                let device = device_clone.read().await;
+                if device.camera.get(&evidence.camera_id).is_some() {
+                    let mut queue = queue_clone.write().await;
+                    queue.push_back(evidence.clone());
+                } else {
+                    continue; // Camera not found, skip
+                }
             }
             {
                 let mut reading = reading_clone.write().await;
                 if let Some(entry) = reading.camera.get_mut(&evidence.camera_id) {
+                    // Count FPS
+                    let old_timestamp = entry.1;
+                    let new_timestamp = Local::now().timestamp_millis();
+                    let fps = if old_timestamp == 0 {
+                        0.0
+                    } else {
+                        1000.0 / ((new_timestamp - old_timestamp) as f64)
+                    };
                     entry.0 = Some(evidence);
-                    entry.1 = Local::now().timestamp_millis();
+                    entry.1 = new_timestamp;
+                    entry.2 = fps;
+                } else {
+                    reading.camera.insert(
+                        evidence.camera_id.clone(),
+                        (Some(evidence), Local::now().timestamp_millis(), 0.0),
+                    );
                 }
             }
         }

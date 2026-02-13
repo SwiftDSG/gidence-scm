@@ -49,31 +49,31 @@
 }
 :root {
   --vh: 1vh;
-  --primary-color: #1766a6;
+  --primary-color: #f36e25;
   --secondary-color: #b076dc;
-  --success-color: #22d28e;
-  --warning-color: #ffd975;
-  --error-color: #de645b;
-  --font-primary-color: #161b21;
-  --font-secondary-color: rgba(71, 77, 84, 0.5);
+  --success-color: #6bc785;
+  --warning-color: #fbc966;
+  --error-color: #fd6969;
+  --font-primary-color: #303030;
+  --font-secondary-color: #636363;
   --font-tertiary-color: #f1f6fa;
-  --background-depth-one-color: #f6fbff;
-  --background-depth-two-color: #f1f6fa;
-  --background-depth-three-color: #e8eff4;
-  --border-color: #d6e1ea;
+  --background-depth-one-color: #ffffff;
+  --background-depth-two-color: #f8f8f8;
+  --background-depth-three-color: #f0f0f0;
+  --border-color: #eaeaea;
   --border: 1px solid var(--border-color);
   --box-shadow: 0 0.5rem 1rem rgba(199, 199, 199, 0.125);
 
   &[data-theme="dark"] {
-    --primary-color: #1766a6;
+    --primary-color: #f36e25;
     --secondary-color: #242529;
-    --font-primary-color: #d9e0e9;
-    --font-secondary-color: rgba(160, 166, 175, 0.75);
+    --font-primary-color: #f0f0f0;
+    --font-secondary-color: rgba(195, 195, 195, 0.75);
     --font-tertiary-color: #161b21;
-    --background-depth-one-color: #1f272f;
-    --background-depth-two-color: #181e25;
-    --background-depth-three-color: #161b21;
-    --border-color: #2a323c;
+    --background-depth-one-color: #272626;
+    --background-depth-two-color: #1b1a1a;
+    --background-depth-three-color: #111010;
+    --border-color: #383737;
     --box-shadow: 0 0.5rem 1rem rgba(15, 16, 17, 0.25);
     ::selection {
       background: rgba(249, 200, 125, 0.25);
@@ -91,7 +91,11 @@ body {
   margin: 0;
   padding: 0;
   font-size: 24px;
-  font-family: "Poppins", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Poppins",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   color: var(--font-primary-color);
   background-color: var(--background-depth-three-color);
   overflow-x: hidden;

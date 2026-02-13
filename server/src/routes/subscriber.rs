@@ -19,7 +19,7 @@ pub async fn subscribe(
         return HttpResponse::Conflict().finish();
     }
 
-    let subscriber = Subscriber::from(request);
+    let mut subscriber = Subscriber::from(request);
 
     match subscriber.save(db.get_ref()).await {
         Ok(()) => HttpResponse::Created().json(subscriber),

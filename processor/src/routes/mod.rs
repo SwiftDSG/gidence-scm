@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use actix_web::{HttpResponse, get, web};
+use actix_files::NamedFile;
+use actix_web::{HttpRequest, HttpResponse, get, web};
 use tokio::sync::RwLock;
 
 use crate::models::{Device, Reading};
@@ -29,6 +30,14 @@ pub async fn get_device(device: web::Data<Arc<RwLock<Device>>>) -> HttpResponse 
     });
     HttpResponse::Ok().json(device_json)
 }
+#[get("/frame/{camera_id}")]
+pub async fn get_frame(camera_id: web::Path<String>, req: HttpRequest) -> HttpResponse {
+    let camera_id = camera_id.into_inner();
+
+    NamedFile::open(&format!("/tmp/{}.jpg", camera_id))
+        .map(|file| file.into_response(&req))
+        .unwrap_or_else(|_| HttpResponse::NotFound().finish())
+}
 
 #[get("/ping")]
 pub async fn ping() -> HttpResponse {
@@ -39,13 +48,14 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(ping)
         .service(get_reading)
         .service(get_device)
+        .service(get_frame)
         .service(
             web::scope("/processor")
                 .service(processor::get_processor)
                 .service(processor::update_processor),
         )
         .service(
-            web::scope("/cameras")
+            web::scope("/camera")
                 .service(camera::get_cameras)
                 .service(camera::create_camera)
                 .service(camera::update_camera)

@@ -36,14 +36,37 @@
       </div>
 
       <div class="gd-processor-cameras">
-        <!-- <gd-camera
-          v-for="camera in cameraList"
-          :key="camera.id"
-          :camera="camera"
-          :evidence="reading.camera[camera.id]?.evidence"
-          :online="isOnline(camera.id)"
-          @click="openCameraMenu(camera)"
-        /> -->
+        <div v-for="n in 4" class="gd-processor-cameras-item">
+          <gd-camera
+            v-if="cameras[n - 1]"
+            :key="cameras[n - 1]!.id"
+            :camera="cameras[n - 1]!"
+            @click="
+              openMenu({
+                camera: {
+                  camera_id: cameras[n - 1]!.id,
+                },
+              })
+            "
+          />
+          <button
+            v-else-if="n - 1 === cameras.length"
+            class="gd-processor-cameras-item-button"
+            @click="
+              openMenu({
+                cameraInformation: {},
+              })
+            "
+          >
+            <div class="gd-processor-cameras-item-button-icon">
+              <gd-svg name="plus" color="tertiary" />
+            </div>
+            <span class="gd-processor-cameras-item-button-title gd-headline-4">
+              Add Camera
+            </span>
+          </button>
+          <div v-else class="gd-processor-cameras-item-empty"></div>
+        </div>
       </div>
     </div>
     <gd-menus @shake="emits('shake')" />
@@ -178,119 +201,70 @@
         }
       }
 
-      &-warning {
-        position: relative;
-        width: calc(100% - 2rem);
-        padding: 0.75rem;
-        margin: 0 1rem;
-        border-radius: 0.75rem;
-        background: var(--warning-color);
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-
-        &-icon {
-          position: relative;
-          width: 2rem;
-          height: 2rem;
-          background: rgba(0, 0, 0, 0.05);
-          padding: 0 0.5rem;
-          border-radius: 0.5rem;
-          box-sizing: border-box;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          flex-shrink: 0;
-        }
-        &-title {
-          position: relative;
-          width: calc(100% - 2.5rem);
-          height: 2rem;
-          display: flex;
-          justify-content: center;
-          flex-direction: column;
-          &-value {
-            position: relative;
-            color: var(--font-tertiary-color);
-          }
-          &-message {
-            position: relative;
-            width: 100%;
-            color: var(--font-tertiary-color);
-            opacity: 0.5;
-          }
-        }
-      }
-
-      &-calculations {
+      // 2x2 grid
+      &-cameras {
         position: relative;
         width: 100%;
+        flex-grow: 1;
         padding: 0 1rem 1rem 1rem;
         box-sizing: border-box;
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
         gap: 1rem;
-        flex-wrap: wrap;
-
-        .gd-calculation {
-          position: relative;
-          width: calc((100% - 3rem) / 4);
-          flex-shrink: 0;
-        }
-      }
-      &-functions {
-        position: relative;
-        width: 100%;
-        padding: 0 1rem 1rem 1rem;
-        box-sizing: border-box;
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-
-        .gd-function {
-          position: relative;
-          width: calc((100% - 3rem) / 4);
-          flex-shrink: 0;
-        }
-      }
-
-      &-template {
-        position: relative;
-        width: 100%;
-        height: calc(100vh - 18rem);
-        margin-bottom: 1rem;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        &-illustration {
-          position: relative;
-          display: flex;
-          flex: 1 0;
-        }
-      }
-
-      &-table {
-        position: relative;
-        width: 100%;
-        padding: 0 1rem 1rem 1rem;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        &-section {
+        &-item {
           position: relative;
           width: 100%;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-
-          &-title {
-            color: var(--text-primary-color);
-          }
-
-          &-table {
+          &-button {
+            cursor: pointer;
             position: relative;
             width: 100%;
+            height: 100%;
+            border: 1px dashed var(--primary-color);
+            border-radius: 0.75rem;
+            background-color: transparent;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            &-icon {
+              position: relative;
+              width: 2rem;
+              height: 2rem;
+              background-color: var(--primary-color);
+              padding: 0 0.5rem;
+              border-radius: 0.5rem;
+              box-sizing: border-box;
+              display: flex;
+              justify-self: center;
+              align-items: center;
+            }
+            &-title {
+              position: relative;
+              color: var(--font-primary-color);
+            }
+            &::before {
+              content: "";
+              position: absolute;
+              width: 100%;
+              height: 100%;
+              border-radius: 0.75rem;
+              box-sizing: border-box;
+              background-color: var(--primary-color);
+              opacity: 0.1;
+            }
+          }
+          &-empty {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: var(--background-depth-two-color);
+            border: 1px dashed var(--border-color);
+            border-radius: 0.75rem;
+            box-sizing: border-box;
+            opacity: 0.5;
           }
         }
       }
@@ -317,100 +291,6 @@
             }
           }
         }
-      }
-    }
-  }
-  .gd-page {
-    position: relative;
-    width: 100%;
-    min-height: 100vh;
-    padding: 1.5rem;
-    box-sizing: border-box;
-    background: var(--background-depth-three-color);
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-
-    &-header {
-      position: relative;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-
-      &-title {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-
-        &-status {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          background: var(--background-depth-one-color);
-          border: var(--border);
-
-          &-indicator {
-            width: 0.5rem;
-            height: 0.5rem;
-            border-radius: 50%;
-          }
-
-          &.--online {
-            .gd-page-header-title-status-indicator {
-              background: var(--success-color);
-            }
-          }
-
-          &.--offline {
-            .gd-page-header-title-status-indicator {
-              background: var(--error-color);
-            }
-          }
-        }
-      }
-
-      &-actions {
-        display: flex;
-        gap: 0.5rem;
-      }
-    }
-
-    &-empty {
-      position: relative;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 1rem;
-      color: var(--font-secondary-color);
-    }
-
-    &-cameras {
-      position: relative;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-      gap: 1rem;
-    }
-
-    &-recent {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-
-      &-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      &-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
       }
     }
   }

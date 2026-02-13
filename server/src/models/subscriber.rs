@@ -4,6 +4,7 @@ use mongodb::{
     bson::{doc, to_bson},
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::event::EventKind;
 
@@ -48,8 +49,10 @@ impl From<SubscriberRequest> for Subscriber {
 }
 
 impl Subscriber {
-    pub async fn save(&self, db: &Database) -> Result<(), EventKind> {
+    pub async fn save(&mut self, db: &Database) -> Result<(), EventKind> {
         let collection = db.collection::<Self>(COLLECTION);
+
+        self.id = Uuid::new_v4().to_string();
 
         if collection.insert_one(self, None).await.is_ok() {
             Ok(())

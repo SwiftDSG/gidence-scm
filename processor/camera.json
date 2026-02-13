@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "cam_sim",
+    "address": {
+      "host": [192, 168, 50, 64],
+      "port": 5502,
+      "path": null,
+      "authentication": null
+    },
+    "name": "Simulator"
+  }
+]
