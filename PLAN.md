@@ -129,22 +129,158 @@ Additional notification channel alongside APNS. Server sends violation alerts to
 
 ---
 
-## Phase 7: Benchmarks & Polish
+## Phase 7: Blackbox Testing
 
-- [x] 7.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
-- [x] 7.2 — Error handling audit: silent failures in iOS managers
+End-to-end testing of the full pipeline: performance under load and detection accuracy.
+Write results directly into this file as you go.
+
+### A. Performance
+
+#### A1 — Single camera throughput
+- [ ] Run 1 camera stream for 60 seconds
+- [ ] Poll `/reading` every second, record FPS value
+- Target: 12-15 FPS
+- Min FPS: ___
+- Max FPS: ___
+- Avg FPS: ___
+
+#### A2 — Multi-camera throughput (4 cameras)
+- [ ] Run 4 camera streams simultaneously for 60 seconds
+- [ ] Poll `/reading` every second, record FPS per camera
+
+| Camera | Min FPS | Max FPS | Avg FPS |
+|--------|---------|---------|---------|
+| Cam 1  |         |         |         |
+| Cam 2  |         |         |         |
+| Cam 3  |         |         |         |
+| Cam 4  |         |         |         |
+
+- FPS degradation vs single camera: ___
+
+#### A3 — End-to-end latency
+- [ ] Add timestamp at inference time, compare with server receive time
+- [ ] Run 100 samples, record latency per segment
+
+| Segment                        | Min (ms) | Max (ms) | Avg (ms) | P95 (ms) |
+|--------------------------------|----------|----------|----------|----------|
+| Inference (frame → UDS send)   |          |          |          |          |
+| UDS (send → Rust receive)      |          |          |          |          |
+| Webhook (Rust → server receive)|          |          |          |          |
+| WebSocket (server → client)    |          |          |          |          |
+| **Total (frame → client)**     |          |          |          |          |
+
+#### A4 — Sustained load (30 minutes)
+- [ ] Run 4 cameras for 30 minutes continuously
+- [ ] Record every 5 minutes:
+
+| Time  | Cam 1 FPS | Cam 2 FPS | Cam 3 FPS | Cam 4 FPS | CPU Temp | Memory (MB) |
+|-------|-----------|-----------|-----------|-----------|----------|-------------|
+| 0:00  |           |           |           |           |          |             |
+| 5:00  |           |           |           |           |          |             |
+| 10:00 |           |           |           |           |          |             |
+| 15:00 |           |           |           |           |          |             |
+| 20:00 |           |           |           |           |          |             |
+| 25:00 |           |           |           |           |          |             |
+| 30:00 |           |           |           |           |          |             |
+
+- Memory leak observed: yes / no
+- Thermal throttling observed: yes / no
+- Notes: ___
+
+---
+
+### B. Detection Accuracy — True Positive
+
+Clips with known violations. Record whether the system correctly detects them.
+
+#### B1 — Single violation per person
+
+| # | Scenario | Expected violation | Detected? | Correct? | Notes |
+|---|----------|--------------------|-----------|----------|-------|
+| B1.1 | 1 person, no hardhat | `missing_hardhat` | | | |
+| B1.2 | 1 person, no gloves | `missing_gloves` | | | |
+| B1.3 | 1 person, no safety vest | `missing_safetyvest` | | | |
+| B1.4 | 1 person, no facemask | `missing_facemask` | | | |
+| B1.5 | 1 person, no shoes | `missing_shoes` | | | |
+| B1.6 | 1 person, no earmuffs | `missing_earmuffs` | | | |
+
+#### B2 — Multiple violations on one person
+
+| # | Scenario | Expected violations | All detected? | Notes |
+|---|----------|---------------------|---------------|-------|
+| B2.1 | No hardhat + no vest | `missing_hardhat`, `missing_safetyvest` | | |
+| B2.2 | No gloves + no shoes | `missing_gloves`, `missing_shoes` | | |
+| B2.3 | No hardhat + no gloves + no vest | `missing_hardhat`, `missing_gloves`, `missing_safetyvest` | | |
+
+#### B3 — Mixed group (compliant + non-compliant)
+
+| # | Scenario | Expected | Result | Notes |
+|---|----------|----------|--------|-------|
+| B3.1 | 2 persons: 1 fully equipped, 1 no hardhat | Only 1 person has `missing_hardhat`, other has 0 violations | | |
+| B3.2 | 3 persons: 2 compliant, 1 no vest + no gloves | Only 1 person has violations | | |
+| B3.3 | 3 persons: all with different violations | Each person has correct individual violations | | |
+
+---
+
+### C. Detection Accuracy — True Negative
+
+Clips with no violations. Record any false alarms.
+
+| # | Scenario | Expected | False violations? | Notes |
+|---|----------|----------|-------------------|-------|
+| C1 | 1 person, fully equipped | 0 violations | | |
+| C2 | 3 persons, all fully equipped | 0 violations each | | |
+| C3 | 5 persons, all fully equipped | 0 violations each | | |
+| C4 | Empty scene, no persons | No evidence generated | | |
+
+---
+
+### D. Detection Accuracy — Edge Cases
+
+| # | Scenario | What you're testing | Detected correctly? | Notes |
+|---|----------|---------------------|---------------------|-------|
+| D1 | Person at far distance (8-10m) | Detection at range | | |
+| D2 | Person partially behind object | Partial occlusion handling | | |
+| D3 | Person entering frame | Transition handling | | |
+| D4 | Person leaving frame | Transition handling | | |
+| D5 | Low light / shadow | Lighting robustness | | |
+| D6 | 2 persons standing close together | Association (right PPE → right person) | | |
+| D7 | 3+ persons overlapping | Association under crowding | | |
+| D8 | Person seen from overhead angle | Overhead camera angle (45-60 deg) | | |
+
+---
+
+### E. Summary Metrics
+
+Calculate after completing B, C, D:
+
+| Violation type | True Positives | False Positives | False Negatives | Precision | Recall |
+|----------------|---------------|-----------------|-----------------|-----------|--------|
+| `missing_hardhat` | | | | | |
+| `missing_gloves` | | | | | |
+| `missing_safetyvest` | | | | | |
+| `missing_facemask` | | | | | |
+| `missing_shoes` | | | | | |
+| `missing_earmuffs` | | | | | |
+| **Overall** | | | | | |
+
+---
+
+## Phase 8: Polish
+
+- [x] 8.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
+- [x] 8.2 — Error handling audit: silent failures in iOS managers
   - Added generic `req<T>` and `status` helpers on Network to centralize error handling
   - Refactored all managers to use the new helpers
   - Fixed double-callback bug in NotificationManager (subscribe/refresh)
   - Fixed Bool vs Bool? type mismatch in delete/unsubscribe callbacks
-- [ ] 7.3 — Test push notification end-to-end
+- [ ] 8.3 — Test push notification end-to-end
   - Simulator → server → APNS → iOS device
-- [ ] 7.4 — Performance benchmarks
-- [ ] 7.5 — Portfolio documentation
-- [ ] 7.6 — Demo video
+- [ ] 8.4 — Portfolio documentation
+- [ ] 8.5 — Demo video
 
 ---
 
 ## Current Status
 
-**Next action:** Phase 4.1 — Camera CRUD in the processor web sidebar.
+**Next action:** Phase 4.3 — Evidence feed per camera in processor-web sidebar.
