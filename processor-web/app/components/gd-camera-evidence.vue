@@ -1,17 +1,28 @@
 <template>
-  <div class="gd-evidence">
+  <div class="gd-camera-evidence">
     <img
-      class="gd-evidence-background"
-      :src="evidence ? `${api}/frame/${camera_id}?id=${evidence.id}` : ''"
+      class="gd-camera-evidence-background"
+      :src="
+        !saved
+          ? `${api}/frame/${evidence.camera_id}?id=${evidence.id}`
+          : `${api}/evidence/${evidence.id}`
+      "
     />
     <img
-      class="gd-evidence-image"
-      :src="evidence ? `${api}/frame/${camera_id}?id=${evidence.id}` : ''"
+      class="gd-camera-evidence-image"
+      :src="
+        !saved
+          ? `${api}/frame/${evidence.camera_id}?id=${evidence.id}`
+          : `${api}/evidence/${evidence.id}`
+      "
     />
-    <div class="gd-evidence-overlay">
-      <div v-for="person in evidence.person" class="gd-evidence-overlay-person">
+    <div class="gd-camera-evidence-overlay">
+      <div
+        v-for="person in evidence.person"
+        class="gd-camera-evidence-overlay-person"
+      >
         <div
-          class="gd-evidence-overlay-person-box"
+          class="gd-camera-evidence-overlay-person-box"
           :style="{
             top: `${person.bbox[1] * 100}%`,
             left: `${person.bbox[0] * 100}%`,
@@ -20,10 +31,13 @@
           }"
         ></div>
       </div>
-      <div v-for="person in evidence.person" class="gd-evidence-overlay-part">
+      <div
+        v-for="person in evidence.person"
+        class="gd-camera-evidence-overlay-part"
+      >
         <div
           v-for="part in person.part"
-          class="gd-evidence-overlay-part-box"
+          class="gd-camera-evidence-overlay-part-box"
           :class="partColor(part.label, person.violation)"
           :style="{
             top: `${part.bbox[1] * 100}%`,
@@ -35,11 +49,11 @@
       </div>
       <div
         v-for="person in evidence.person"
-        class="gd-evidence-overlay-equipment"
+        class="gd-camera-evidence-overlay-equipment"
       >
         <div
           v-for="equipment in person.equipment"
-          class="gd-evidence-overlay-equipment-box"
+          class="gd-camera-evidence-overlay-equipment-box"
           :class="equipmentColor(equipment.label, person.violation)"
           :style="{
             top: `${equipment.bbox[1] * 100}%`,
@@ -62,8 +76,8 @@
   } from "~/types/evidence";
 
   const props = defineProps<{
-    camera_id: string;
     evidence: Evidence;
+    saved?: boolean;
   }>();
 
   const {
@@ -121,7 +135,7 @@
 </script>
 
 <style lang="scss" scoped>
-  .gd-evidence {
+  .gd-camera-evidence {
     position: relative;
     width: 100%;
     height: 100%;

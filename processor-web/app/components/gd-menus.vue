@@ -4,6 +4,19 @@
     :style="menusCopy.length > 0 ? 'pointer-events: all;' : ''"
   >
     <div v-for="(menu, i) in menusCopy" :key="i" class="gd-menus-item">
+      <gd-evidence-menu
+        v-if="menu['evidence']"
+        :active="i === menusCopy.length - 1"
+        :camera_id="menu['evidence'].camera_id"
+        @shake="emits('shake')"
+      />
+      <gd-evidence-information-menu
+        v-else-if="menu['evidenceInformation']"
+        :active="i === menusCopy.length - 1"
+        :camera_id="menu['evidenceInformation'].camera_id"
+        :evidence_id="menu['evidenceInformation'].evidence_id"
+        @shake="emits('shake')"
+      />
       <gd-processor-menu
         v-if="menu['processor']"
         :active="i === menusCopy.length - 1"

@@ -23,4 +23,6 @@ export type Menu = {
   camera?: { camera_id: string },
   cameraDelete?: { camera_id: string },
   cameraInformation?: { camera_id?: string },
+  evidence?: { camera_id: string },
+  evidenceInformation?: { camera_id: string, evidence_id: string },
 }

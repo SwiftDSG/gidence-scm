@@ -67,17 +67,16 @@ The subscriber system and APNS dependency exist on the server. The iOS app alrea
 
 Nuxt.js dashboard running locally on the Raspberry Pi. Sidebar handles processor info editing and camera CRUD. Home page is a monitoring view.
 
-- [ ] 4.1 — Camera CRUD in sidebar
+- [x] 4.1 — Camera CRUD in sidebar
   - Add camera: form with name, RTSP URL
   - Edit camera: update name, RTSP URL
   - Delete camera: with confirmation
-  - Wire to existing server API (`POST/PUT/DELETE /cameras`)
-- [ ] 4.2 — Home page: camera monitoring grid
-  - Grid of camera cards, each showing:
-    - Camera name + online/offline indicator
-    - Latest captured frame (thumbnail)
-    - Violation count badge (last hour or today)
-  - Click a camera card → opens sidebar menu with that camera's recent evidence feed
+  - Wire to existing processor API (`POST/PUT/DELETE /camera`)
+  - Added `GET /camera/{id}/frame` endpoint for serving latest frame images
+- [x] 4.2 — Home page: camera monitoring grid
+  - Grid of camera cards with latest frame (cache-busted on evidence update)
+  - FPS metric per camera (calculated from UDS message timestamps in Reading struct)
+  - Bounding box overlays with violation-aware coloring (person=white, parts/equipment=green/red)
 - [ ] 4.3 — Evidence feed per camera
   - Show list of recent evidences for the selected camera
   - Each evidence shows: frame thumbnail, timestamp, violation count

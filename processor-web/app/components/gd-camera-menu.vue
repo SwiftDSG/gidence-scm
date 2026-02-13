@@ -1,8 +1,8 @@
 <template>
   <gd-menu :active="active" :label="camera.name" class="gd-menu">
-    <div class="gd-camera-menu-body">
+    <div class="gd-menu-body">
       <div
-        class="gd-camera-menu-body-item"
+        class="gd-menu-body-item"
         @click="
           openMenu({
             cameraInformation: {
@@ -11,21 +11,42 @@
           })
         "
       >
-        <div class="gd-camera-menu-body-item-icon">
+        <div class="gd-menu-body-item-icon">
           <gd-svg name="information" />
         </div>
-        <div class="gd-camera-menu-body-item-information">
-          <span class="gd-camera-menu-body-item-information-value gd-headline-5"
+        <div class="gd-menu-body-item-information">
+          <span class="gd-menu-body-item-information-value gd-headline-5"
             >General information</span
           >
-          <span
-            class="gd-camera-menu-body-item-information-placeholder gd-body-5"
+          <span class="gd-menu-body-item-information-placeholder gd-body-5"
             >See or change this camera's information</span
           >
         </div>
       </div>
       <div
-        class="gd-camera-menu-body-item --error"
+        class="gd-menu-body-item"
+        @click="
+          openMenu({
+            evidence: {
+              camera_id: camera.id,
+            },
+          })
+        "
+      >
+        <div class="gd-menu-body-item-icon">
+          <gd-svg name="worker" />
+        </div>
+        <div class="gd-menu-body-item-information">
+          <span class="gd-menu-body-item-information-value gd-headline-5"
+            >Evidence list</span
+          >
+          <span class="gd-menu-body-item-information-placeholder gd-body-5"
+            >See evidences captured by this camera</span
+          >
+        </div>
+      </div>
+      <div
+        class="gd-menu-body-item --error"
         @click="
           openMenu({
             cameraDelete: {
@@ -34,15 +55,14 @@
           })
         "
       >
-        <div class="gd-camera-menu-body-item-icon">
+        <div class="gd-menu-body-item-icon">
           <gd-svg name="delete" color="error" />
         </div>
-        <div class="gd-camera-menu-body-item-information">
-          <span class="gd-camera-menu-body-item-information-value gd-headline-5"
+        <div class="gd-menu-body-item-information">
+          <span class="gd-menu-body-item-information-value gd-headline-5"
             >Delete camera</span
           >
-          <span
-            class="gd-camera-menu-body-item-information-placeholder gd-body-5"
+          <span class="gd-menu-body-item-information-placeholder gd-body-5"
             >Remove this camera from the application</span
           >
         </div>
@@ -69,7 +89,7 @@
 </script>
 
 <style lang="scss" scoped>
-  .gd-camera-menu {
+  .gd-menu {
     &-body {
       position: relative;
       width: 100%;
@@ -143,17 +163,6 @@
         &:hover::after {
           opacity: 0.025;
         }
-      }
-    }
-  }
-
-  .--error {
-    &.gd-camera-menu-body-item {
-      border-color: var(--error-color);
-
-      .gd-camera-menu-body-item-icon::before {
-        background: var(--error-color);
-        opacity: 0.1;
       }
     }
   }

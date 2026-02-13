@@ -1,137 +1,115 @@
 <template>
   <div class="gd-evidence" @click="emits('click')">
-    <div class="gd-evidence-thumbnail">
-      <img
-        v-if="imageUrl"
-        :src="imageUrl"
-        alt="Evidence"
-        class="gd-evidence-thumbnail-image"
-      />
-      <div v-else class="gd-evidence-thumbnail-placeholder">
-        <gd-svg name="image" color="secondary" />
+    <div class="gd-evidence-header">
+      <div class="gd-evidence-header-information">
+        <span class="gd-evidence-header-information-title gd-headline-5">{{
+          formatTime(props.evidence.timestamp)
+        }}</span>
+        <div class="gd-evidence-header-information-id gd-body-5">
+          {{ props.evidence.id }}
+        </div>
+      </div>
+      <div class="gd-evidence-header-chip">
+        <div class="gd-evidence-header-chip-icon">
+          <gd-svg name="account-group" color="tertiary" />
+        </div>
+        <span class="gd-evidence-header-chip-count gd-headline-6">
+          {{ violationCount }}
+        </span>
       </div>
     </div>
-    <div class="gd-evidence-info">
-      <div class="gd-evidence-info-header">
-        <span class="gd-evidence-info-header-camera gd-headline-5">{{
-          cameraName
-        }}</span>
-        <span class="gd-evidence-info-header-time gd-body-5">{{
-          formatTime(evidence.timestamp)
-        }}</span>
-      </div>
-      <div class="gd-evidence-info-violations">
-        <gd-violation
-          v-for="(violation, index) in allViolations"
-          :key="index"
-          :violation="violation"
-        />
-      </div>
-      <div class="gd-evidence-info-stats">
-        <span class="gd-body-5">{{ evidence.person.length }} person(s)</span>
-        <span class="gd-body-5">{{ allViolations.length }} violation(s)</span>
-      </div>
+    <div class="gd-evidence-body">
+      <gd-camera-evidence v-if="evidence" :saved="true" :evidence="evidence" />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { Evidence, EvidencePersonViolation } from "~/types/evidence";
+  import type { Evidence } from "~/types/evidence";
 
-const props = defineProps<{
-  evidence: Evidence;
-  cameraName?: string;
-  imageUrl?: string;
-}>();
+  const props = defineProps<{
+    evidence: Evidence;
+  }>();
 
-const emits = defineEmits<{
-  (event: "click"): void;
-}>();
+  const emits = defineEmits<{
+    (event: "click"): void;
+  }>();
 
-const allViolations = computed<EvidencePersonViolation[]>(() => {
-  return props.evidence.person.flatMap((p) => p.violation);
-});
+  const violationCount = computed<number>(() => {
+    return props.evidence.person.reduce((acc, person) => {
+      return acc + person.violation.length;
+    }, 0);
+  });
 
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  return date.toLocaleString();
-};
+  const formatTime = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
 </script>
 
 <style lang="scss" scoped>
-.gd-evidence {
-  cursor: pointer;
-  position: relative;
-  width: 100%;
-  border: var(--border);
-  border-radius: 0.75rem;
-  background: var(--background-depth-one-color);
-  box-sizing: border-box;
-  display: flex;
-  overflow: hidden;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  &-thumbnail {
+  .gd-evidence {
+    cursor: pointer;
     position: relative;
-    width: 8rem;
-    height: 6rem;
-    flex-shrink: 0;
-    background: var(--background-depth-two-color);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    &-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    &-placeholder {
-      width: 2rem;
-      height: 2rem;
-      opacity: 0.5;
-    }
-  }
-
-  &-info {
-    position: relative;
-    flex: 1;
+    width: 100%;
+    border: var(--border);
+    border-radius: 0.75rem;
+    background: var(--background-depth-one-color);
     padding: 0.75rem;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    overflow: hidden;
 
     &-header {
+      position: relative;
+      width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: center;
 
-      &-camera {
-        color: var(--font-primary-color);
+      &-information {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        &-title {
+          position: relative;
+        }
+        &-id {
+          position: relative;
+          color: var(--font-secondary-color);
+        }
       }
-
-      &-time {
-        color: var(--font-secondary-color);
+      &-chip {
+        position: relative;
+        height: 1.5rem;
+        padding: 0 0.5rem;
+        border-radius: 0.75rem;
+        background: var(--warning-color);
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        &-icon {
+          position: relative;
+          width: 0.75rem;
+          display: flex;
+        }
+        &-count {
+          position: relative;
+          color: var(--font-tertiary-color);
+        }
       }
     }
 
-    &-violations {
+    &-body {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: var(--background-depth-two-color);
+      border-radius: 0.5rem;
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem;
-    }
-
-    &-stats {
-      display: flex;
-      gap: 1rem;
-      color: var(--font-secondary-color);
+      overflow: hidden;
     }
   }
-}
 </style>

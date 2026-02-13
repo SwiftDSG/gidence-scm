@@ -1,9 +1,5 @@
 <template>
-  <div
-    class="gd-camera"
-    :class="online ? '--online' : '--offline'"
-    @click="emits('click')"
-  >
+  <div class="gd-camera" :class="online ? '--online' : '--offline'">
     <div class="gd-camera-header">
       <div
         class="gd-camera-header-status"
@@ -23,15 +19,7 @@
     </div>
     <div class="gd-camera-body">
       <div class="gd-camera-body-evidence">
-        <!-- <img
-          class="gd-camera-body-evidence-image"
-          :src="evidence ? `${api}/frame/${camera.id}?id=${evidence.id}` : ''"
-        /> -->
-        <gd-camera-evidence
-          v-if="evidence"
-          :camera_id="camera.id"
-          :evidence="evidence"
-        />
+        <gd-camera-evidence v-if="evidence" :evidence="evidence" />
       </div>
       <div class="gd-camera-body-metrics">
         <div class="gd-camera-body-metrics-item">
@@ -224,12 +212,6 @@
         border-radius: 0.5rem;
         display: flex;
         overflow: hidden;
-        &-image {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
       }
       &-metrics {
         position: relative;
