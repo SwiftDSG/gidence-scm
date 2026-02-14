@@ -107,6 +107,23 @@
       </div>
       <gd-button type="tertiary" :icon="'arrow-right'" @click="personNext" />
     </div>
+    <div
+      v-for="violation in evidence?.person[evidencePersonIndex]?.violation ||
+      []"
+      class="gd-menu-violation"
+    >
+      <div class="gd-menu-violation-header">
+        <div class="gd-menu-violation-header-icon">
+          <gd-svg :name="violationIcon(violation)" />
+        </div>
+        <span class="gd-menu-violation-header-title gd-headline-5">
+          {{ violationTitle(violation) }}
+        </span>
+      </div>
+      <span class="gd-menu-violation-body gd-body-5">
+        {{ violationDescription(violation) }}
+      </span>
+    </div>
   </gd-menu>
 </template>
 
@@ -214,6 +231,57 @@
       return "--error";
     return "--success";
   }
+  function violationIcon(violation: EvidencePersonViolation): string {
+    if (violation.includes("hardhat")) return "hardhat";
+    if (violation.includes("gloves")) return "gloves";
+    if (violation.includes("shoes")) return "shoes";
+    if (violation.includes("facemask")) return "facemask";
+    if (violation.includes("earmuffs")) return "earmuffs";
+    if (violation.includes("safetyvest")) return "safetyvest";
+    return "alert";
+  }
+  function violationTitle(violation: EvidencePersonViolation): string {
+    if (violation === "improperly_worn_hardhat")
+      return "Hardhat Improperly Worn";
+    if (violation === "improperly_worn_gloves") return "Gloves Improperly Worn";
+    if (violation === "improperly_worn_shoes") return "Shoes Improperly Worn";
+    if (violation === "improperly_worn_facemask")
+      return "Facemask Improperly Worn";
+    if (violation === "improperly_worn_earmuffs")
+      return "Earmuffs Improperly Worn";
+    if (violation === "missing_hardhat") return "Missing Hardhat";
+    if (violation === "missing_gloves") return "Missing Gloves";
+    if (violation === "missing_shoes") return "Missing Shoes";
+    if (violation === "missing_facemask") return "Missing Facemask";
+    if (violation === "missing_earmuffs") return "Missing Earmuffs";
+    if (violation === "missing_safetyvest") return "Missing Safety Vest";
+    return "Violation";
+  }
+  function violationDescription(violation: EvidencePersonViolation): string {
+    if (violation === "improperly_worn_hardhat")
+      return "Both head and hardhat is detected, but hardhat isn't placed on head properly.";
+    if (violation === "improperly_worn_gloves")
+      return "Both hand and gloves is detected, but gloves isn't covering the hand properly.";
+    if (violation === "improperly_worn_shoes")
+      return "Both foot and shoes is detected, but shoes isn't covering the foot properly.";
+    if (violation === "improperly_worn_facemask")
+      return "Both face and facemask is detected, but facemask isn't covering the face properly.";
+    if (violation === "improperly_worn_earmuffs")
+      return "Both ear and earmuffs is detected, but earmuffs isn't covering the ear properly.";
+    if (violation === "missing_hardhat")
+      return "Head is detected, but hardhat isn't detected.";
+    if (violation === "missing_gloves")
+      return "Hand is detected, but gloves isn't detected.";
+    if (violation === "missing_shoes")
+      return "Foot is detected, but shoes isn't detected.";
+    if (violation === "missing_facemask")
+      return "Face is detected, but facemask isn't detected.";
+    if (violation === "missing_earmuffs")
+      return "Ear is detected, but earmuffs isn't detected.";
+    if (violation === "missing_safetyvest")
+      return "Safety vest isn't detected on the person.";
+    return "Violation";
+  }
 
   watch(
     () => evidencePersonIndex.value,
@@ -227,7 +295,6 @@
       const w = person.bbox[2] - person.bbox[0];
       const h = person.bbox[3] - person.bbox[1];
 
-      console.log("w", w, "h", h);
       let pw = 0,
         ph = 0,
         px = 0,
@@ -283,13 +350,6 @@
 
       evidenceScale.value = scale;
       evidenceOffset.value = { x: -px, y: -py };
-
-      console.log(
-        "evidenceScale",
-        evidenceScale.value,
-        "evidenceOffset",
-        evidenceOffset.value,
-      );
     },
   );
 
@@ -453,7 +513,7 @@
     &-control {
       position: relative;
       width: 100%;
-      margin-top: 0.75rem;
+      margin: 0.75rem 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -470,6 +530,52 @@
           position: relative;
           color: var(--font-secondary-color);
         }
+      }
+    }
+
+    &-violation {
+      position: relative;
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      border: var(--border);
+      box-sizing: border-box;
+      background: var(--background-depth-one-color);
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+
+      &-header {
+        position: relative;
+        width: 100%;
+        display: flex;
+        gap: 0.5rem;
+        &-icon {
+          position: relative;
+          width: 2rem;
+          height: 2rem;
+          background-color: var(--background-depth-two-color);
+          padding: 0 0.5rem;
+          border-radius: 0.5rem;
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        &-title {
+          position: relative;
+        }
+      }
+
+      &-body {
+        position: relative;
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        box-sizing: border-box;
+        background-color: var(--background-depth-two-color);
+        color: var(--font-secondary-color);
       }
     }
   }

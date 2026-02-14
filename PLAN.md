@@ -77,10 +77,10 @@ Nuxt.js dashboard running locally on the Raspberry Pi. Sidebar handles processor
   - Grid of camera cards with latest frame (cache-busted on evidence update)
   - FPS metric per camera (calculated from UDS message timestamps in Reading struct)
   - Bounding box overlays with violation-aware coloring (person=white, parts/equipment=green/red)
-- [ ] 4.3 — Evidence feed per camera
-  - Show list of recent evidences for the selected camera
-  - Each evidence shows: frame thumbnail, timestamp, violation count
-  - Basic violation summary (which violations were detected)
+- [x] 4.3 — Evidence feed per camera
+  - Evidence information menu with image viewer, zoom/pan per person, bbox overlays
+  - Violation cards with icons, titles, and descriptions
+  - Person navigation (prev/next) with violation count per person
 
 ---
 
@@ -137,44 +137,48 @@ Write results directly into this file as you go.
 ### A. Performance
 
 #### A1 — Single camera throughput
+
 - [ ] Run 1 camera stream for 60 seconds
 - [ ] Poll `/reading` every second, record FPS value
 - Target: 12-15 FPS
-- Min FPS: ___
-- Max FPS: ___
-- Avg FPS: ___
+- Min FPS: \_\_\_
+- Max FPS: \_\_\_
+- Avg FPS: \_\_\_
 
 #### A2 — Multi-camera throughput (4 cameras)
+
 - [ ] Run 4 camera streams simultaneously for 60 seconds
 - [ ] Poll `/reading` every second, record FPS per camera
 
 | Camera | Min FPS | Max FPS | Avg FPS |
-|--------|---------|---------|---------|
+| ------ | ------- | ------- | ------- |
 | Cam 1  |         |         |         |
 | Cam 2  |         |         |         |
 | Cam 3  |         |         |         |
 | Cam 4  |         |         |         |
 
-- FPS degradation vs single camera: ___
+- FPS degradation vs single camera: \_\_\_
 
 #### A3 — End-to-end latency
+
 - [ ] Add timestamp at inference time, compare with server receive time
 - [ ] Run 100 samples, record latency per segment
 
-| Segment                        | Min (ms) | Max (ms) | Avg (ms) | P95 (ms) |
-|--------------------------------|----------|----------|----------|----------|
-| Inference (frame → UDS send)   |          |          |          |          |
-| UDS (send → Rust receive)      |          |          |          |          |
-| Webhook (Rust → server receive)|          |          |          |          |
-| WebSocket (server → client)    |          |          |          |          |
-| **Total (frame → client)**     |          |          |          |          |
+| Segment                         | Min (ms) | Max (ms) | Avg (ms) | P95 (ms) |
+| ------------------------------- | -------- | -------- | -------- | -------- |
+| Inference (frame → UDS send)    |          |          |          |          |
+| UDS (send → Rust receive)       |          |          |          |          |
+| Webhook (Rust → server receive) |          |          |          |          |
+| WebSocket (server → client)     |          |          |          |          |
+| **Total (frame → client)**      |          |          |          |          |
 
 #### A4 — Sustained load (30 minutes)
+
 - [ ] Run 4 cameras for 30 minutes continuously
 - [ ] Record every 5 minutes:
 
 | Time  | Cam 1 FPS | Cam 2 FPS | Cam 3 FPS | Cam 4 FPS | CPU Temp | Memory (MB) |
-|-------|-----------|-----------|-----------|-----------|----------|-------------|
+| ----- | --------- | --------- | --------- | --------- | -------- | ----------- |
 | 0:00  |           |           |           |           |          |             |
 | 5:00  |           |           |           |           |          |             |
 | 10:00 |           |           |           |           |          |             |
@@ -185,7 +189,7 @@ Write results directly into this file as you go.
 
 - Memory leak observed: yes / no
 - Thermal throttling observed: yes / no
-- Notes: ___
+- Notes: \_\_\_
 
 ---
 
@@ -195,30 +199,30 @@ Clips with known violations. Record whether the system correctly detects them.
 
 #### B1 — Single violation per person
 
-| # | Scenario | Expected violation | Detected? | Correct? | Notes |
-|---|----------|--------------------|-----------|----------|-------|
-| B1.1 | 1 person, no hardhat | `missing_hardhat` | | | |
-| B1.2 | 1 person, no gloves | `missing_gloves` | | | |
-| B1.3 | 1 person, no safety vest | `missing_safetyvest` | | | |
-| B1.4 | 1 person, no facemask | `missing_facemask` | | | |
-| B1.5 | 1 person, no shoes | `missing_shoes` | | | |
-| B1.6 | 1 person, no earmuffs | `missing_earmuffs` | | | |
+| #    | Scenario                 | Expected violation   | Detected? | Correct? | Notes |
+| ---- | ------------------------ | -------------------- | --------- | -------- | ----- |
+| B1.1 | 1 person, no hardhat     | `missing_hardhat`    |           |          |       |
+| B1.2 | 1 person, no gloves      | `missing_gloves`     |           |          |       |
+| B1.3 | 1 person, no safety vest | `missing_safetyvest` |           |          |       |
+| B1.4 | 1 person, no facemask    | `missing_facemask`   |           |          |       |
+| B1.5 | 1 person, no shoes       | `missing_shoes`      |           |          |       |
+| B1.6 | 1 person, no earmuffs    | `missing_earmuffs`   |           |          |       |
 
 #### B2 — Multiple violations on one person
 
-| # | Scenario | Expected violations | All detected? | Notes |
-|---|----------|---------------------|---------------|-------|
-| B2.1 | No hardhat + no vest | `missing_hardhat`, `missing_safetyvest` | | |
-| B2.2 | No gloves + no shoes | `missing_gloves`, `missing_shoes` | | |
-| B2.3 | No hardhat + no gloves + no vest | `missing_hardhat`, `missing_gloves`, `missing_safetyvest` | | |
+| #    | Scenario                         | Expected violations                                       | All detected? | Notes |
+| ---- | -------------------------------- | --------------------------------------------------------- | ------------- | ----- |
+| B2.1 | No hardhat + no vest             | `missing_hardhat`, `missing_safetyvest`                   |               |       |
+| B2.2 | No gloves + no shoes             | `missing_gloves`, `missing_shoes`                         |               |       |
+| B2.3 | No hardhat + no gloves + no vest | `missing_hardhat`, `missing_gloves`, `missing_safetyvest` |               |       |
 
 #### B3 — Mixed group (compliant + non-compliant)
 
-| # | Scenario | Expected | Result | Notes |
-|---|----------|----------|--------|-------|
-| B3.1 | 2 persons: 1 fully equipped, 1 no hardhat | Only 1 person has `missing_hardhat`, other has 0 violations | | |
-| B3.2 | 3 persons: 2 compliant, 1 no vest + no gloves | Only 1 person has violations | | |
-| B3.3 | 3 persons: all with different violations | Each person has correct individual violations | | |
+| #    | Scenario                                      | Expected                                                    | Result | Notes |
+| ---- | --------------------------------------------- | ----------------------------------------------------------- | ------ | ----- |
+| B3.1 | 2 persons: 1 fully equipped, 1 no hardhat     | Only 1 person has `missing_hardhat`, other has 0 violations |        |       |
+| B3.2 | 3 persons: 2 compliant, 1 no vest + no gloves | Only 1 person has violations                                |        |       |
+| B3.3 | 3 persons: all with different violations      | Each person has correct individual violations               |        |       |
 
 ---
 
@@ -226,43 +230,57 @@ Clips with known violations. Record whether the system correctly detects them.
 
 Clips with no violations. Record any false alarms.
 
-| # | Scenario | Expected | False violations? | Notes |
-|---|----------|----------|-------------------|-------|
-| C1 | 1 person, fully equipped | 0 violations | | |
-| C2 | 3 persons, all fully equipped | 0 violations each | | |
-| C3 | 5 persons, all fully equipped | 0 violations each | | |
-| C4 | Empty scene, no persons | No evidence generated | | |
+| #   | Scenario                      | Expected              | False violations? | Notes |
+| --- | ----------------------------- | --------------------- | ----------------- | ----- |
+| C1  | 1 person, fully equipped      | 0 violations          |                   |       |
+| C2  | 3 persons, all fully equipped | 0 violations each     |                   |       |
+| C3  | 5 persons, all fully equipped | 0 violations each     |                   |       |
+| C4  | Empty scene, no persons       | No evidence generated |                   |       |
 
 ---
 
 ### D. Detection Accuracy — Edge Cases
 
-| # | Scenario | What you're testing | Detected correctly? | Notes |
-|---|----------|---------------------|---------------------|-------|
-| D1 | Person at far distance (8-10m) | Detection at range | | |
-| D2 | Person partially behind object | Partial occlusion handling | | |
-| D3 | Person entering frame | Transition handling | | |
-| D4 | Person leaving frame | Transition handling | | |
-| D5 | Low light / shadow | Lighting robustness | | |
-| D6 | 2 persons standing close together | Association (right PPE → right person) | | |
-| D7 | 3+ persons overlapping | Association under crowding | | |
-| D8 | Person seen from overhead angle | Overhead camera angle (45-60 deg) | | |
+| #   | Scenario                          | What you're testing                    | Detected correctly? | Notes |
+| --- | --------------------------------- | -------------------------------------- | ------------------- | ----- |
+| D1  | Person at far distance (8-10m)    | Detection at range                     |                     |       |
+| D2  | Person partially behind object    | Partial occlusion handling             |                     |       |
+| D3  | Person entering frame             | Transition handling                    |                     |       |
+| D4  | Person leaving frame              | Transition handling                    |                     |       |
+| D5  | Low light / shadow                | Lighting robustness                    |                     |       |
+| D6  | 2 persons standing close together | Association (right PPE → right person) |                     |       |
+| D7  | 3+ persons overlapping            | Association under crowding             |                     |       |
+| D8  | Person seen from overhead angle   | Overhead camera angle (45-60 deg)      |                     |       |
 
 ---
 
-### E. Summary Metrics
+### E. Push Notification End-to-End
+
+Test the full notification pipeline: processor → server → APNS → iOS device.
+
+| #   | Scenario                                    | Expected                                      | Received on device? | Correct payload? | Notes |
+| --- | ------------------------------------------- | --------------------------------------------- | ------------------- | ---------------- | ----- |
+| E1  | Single violation evidence sent by simulator | APNS notification on iOS                      |                     |                  |       |
+| E2  | Tap notification on iOS                     | Navigates to EvidenceDetail for that evidence |                     |                  |       |
+| E3  | Multiple evidences in quick succession      | Each triggers a separate notification         |                     |                  |       |
+| E4  | User unsubscribed                           | No notification received                      |                     |                  |       |
+| E5  | User re-subscribed after unsubscribe        | Notifications resume                          |                     |                  |       |
+
+---
+
+### F. Summary Metrics
 
 Calculate after completing B, C, D:
 
-| Violation type | True Positives | False Positives | False Negatives | Precision | Recall |
-|----------------|---------------|-----------------|-----------------|-----------|--------|
-| `missing_hardhat` | | | | | |
-| `missing_gloves` | | | | | |
-| `missing_safetyvest` | | | | | |
-| `missing_facemask` | | | | | |
-| `missing_shoes` | | | | | |
-| `missing_earmuffs` | | | | | |
-| **Overall** | | | | | |
+| Violation type       | True Positives | False Positives | False Negatives | Precision | Recall |
+| -------------------- | -------------- | --------------- | --------------- | --------- | ------ |
+| `missing_hardhat`    |                |                 |                 |           |        |
+| `missing_gloves`     |                |                 |                 |           |        |
+| `missing_safetyvest` |                |                 |                 |           |        |
+| `missing_facemask`   |                |                 |                 |           |        |
+| `missing_shoes`      |                |                 |                 |           |        |
+| `missing_earmuffs`   |                |                 |                 |           |        |
+| **Overall**          |                |                 |                 |           |        |
 
 ---
 
@@ -274,13 +292,11 @@ Calculate after completing B, C, D:
   - Refactored all managers to use the new helpers
   - Fixed double-callback bug in NotificationManager (subscribe/refresh)
   - Fixed Bool vs Bool? type mismatch in delete/unsubscribe callbacks
-- [ ] 8.3 — Test push notification end-to-end
-  - Simulator → server → APNS → iOS device
-- [ ] 8.4 — Portfolio documentation
-- [ ] 8.5 — Demo video
+- [ ] 8.3 — Portfolio documentation
+- [ ] 8.4 — Demo video
 
 ---
 
 ## Current Status
 
-**Next action:** Phase 4.3 — Evidence feed per camera in processor-web sidebar.
+**Next action:** Phase 5.1 — Server web interface: auth/login page.
