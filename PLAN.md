@@ -284,19 +284,82 @@ Calculate after completing B, C, D:
 
 ---
 
-## Phase 8: Polish
+## Phase 8: Go-to-Market Preparation
 
-- [x] 8.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
-- [x] 8.2 — Error handling audit: silent failures in iOS managers
+### 8.1 — Case Study: Unilever Deployment
+- [ ] Write problem statement (what safety challenges did the factory face)
+- [ ] Document the solution (what we built, how it works)
+- [ ] Include results from Phase 7 testing (FPS, accuracy, precision/recall)
+- [ ] Add deployment details (hardware used, number of cameras, setup time)
+- [ ] Include before/after comparison or sample detection screenshots
+- Format: 1-2 page PDF
+
+### 8.2 — Product One-Pagers (one per tier)
+
+**Processor Only:**
+- [ ] What's included (Pi + Hailo + software, local web dashboard)
+- [ ] What the client provides (cameras, RTSP streams, network)
+- [ ] Key features (real-time detection, local monitoring, FPS/camera specs)
+- [ ] Deployment requirements and setup process
+
+**Full System:**
+- [ ] Everything in Processor Only + server, iOS app, push notifications
+- [ ] Multi-site management (clusters)
+- [ ] Real-time alerts (APNS + Telegram)
+- [ ] User management, access control
+- [ ] Deployment requirements (server hosting, domain, etc.)
+
+### 8.3 — Demo Video
+- [ ] Record 2-3 minute video showing the full pipeline
+- [ ] Show: camera feed → live detection with bounding boxes → violation alert on phone
+- [ ] Show: processor web dashboard (monitoring grid, evidence detail)
+- [ ] Show: iOS app (evidence list, violation breakdown, push notification)
+- [ ] Add narration or captions explaining what's happening
+
+### 8.4 — Pricing Model
+- [ ] Define pricing structure for Processor Only (per-camera? per-unit? one-time?)
+- [ ] Define pricing structure for Full System (one-time + monthly? pure SaaS?)
+- [ ] Factor in: hardware cost, deployment/setup, ongoing support/maintenance
+- [ ] Competitive research: what do similar solutions cost?
+
+### 8.5 — Deployment Playbook
+- [ ] Minimum hardware requirements per site
+- [ ] Network requirements (bandwidth, connectivity)
+- [ ] Step-by-step setup guide (how long from unboxing to operational)
+- [ ] Camera placement guidelines (height, angle, coverage area)
+- [ ] Troubleshooting / FAQ for common issues
+
+### 8.6 — Sales & Outreach
+- [ ] Identify 10-20 target FMCG companies with factories in the region
+- [ ] Find EHS (Environment, Health, Safety) manager contacts via LinkedIn
+- [ ] Prepare cold outreach template (email/LinkedIn message)
+- [ ] List relevant industry events, safety compliance expos, associations
+- [ ] Create a simple landing page or pitch deck for first contact
+
+---
+
+## Phase 9: Polish
+
+- [x] 9.1 — Fix subscriber refresh endpoint route bug (literal `subscriber_id` instead of `{subscriber_id}`)
+- [x] 9.2 — Error handling audit: silent failures in iOS managers
   - Added generic `req<T>` and `status` helpers on Network to centralize error handling
   - Refactored all managers to use the new helpers
   - Fixed double-callback bug in NotificationManager (subscribe/refresh)
   - Fixed Bool vs Bool? type mismatch in delete/unsubscribe callbacks
-- [ ] 8.3 — Portfolio documentation
-- [ ] 8.4 — Demo video
+- [ ] 9.3 — Portfolio documentation
 
 ---
 
 ## Current Status
 
-**Next action:** Phase 5.1 — Server web interface: auth/login page.
+**Last updated:** 2026-02-12
+
+**Next action:** Phase 7 — Blackbox testing (blocked until Raspberry Pi access). Start with A1 (single camera throughput). Testing results feed directly into Phase 8 (case study + product one-pagers).
+
+**Completed this session:**
+- [x] 4.1 — Camera CRUD + frame serving endpoint
+- [x] 4.2 — Monitoring grid with FPS metrics + bbox overlays
+- [x] 4.3 — Evidence detail menu with zoom/pan + violation cards
+- Phase 4 (Processor Web) fully complete
+- Added Phase 7 blackbox testing checklist with fillable tables
+- Added Phase 8 go-to-market plan (case study, one-pagers, demo video, pricing, outreach)
